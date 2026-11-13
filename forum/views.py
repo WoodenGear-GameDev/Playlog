@@ -165,3 +165,21 @@ def game_chat(request, game_pk):
         'form': form,
         'reply_target': reply_target,
     })
+
+@login_required
+def topic_delete(request, pk):
+    topic = get_object_or_404(Topic.objects.select_related('game'), pk=pk)
+    if not request.user.is_staff:
+        raise PermissionDenied
+
+    if request.method == 'POST':
+        game_pk = topic.game_id
+        title = topic.title
+        topic.delete()
+        messages.success(request, f'Тема «{title}» удалена вместе со всеми сообщениями.')
+        return redirect('topic_list', game_pk=game_pk)
+
+    return render(request, 'forum/topic_delete.html', {
+        'topic': topic,
+        'posts_count': topic.posts.count(),
+    })

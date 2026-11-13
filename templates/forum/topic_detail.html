@@ -6,6 +6,9 @@
 <p><a href="{% url 'topic_list' topic.game.pk %}">← Форум: {{ topic.game }}</a></p>
 
 <h1>{{ topic.title }}</h1>
+{% if user.is_staff %}
+<p><a href="{% url 'topic_delete' topic.pk %}">Удалить тему (модератор)</a></p>
+{% endif %}
 <article class="topic-body">
     <p><strong>{{ topic.author.username }}</strong> · {{ topic.created_at|date:"d.m.Y H:i" }}</p>
     {{ topic.body|linebreaks }}

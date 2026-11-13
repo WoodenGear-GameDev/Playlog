@@ -10,4 +10,5 @@ urlpatterns = [
     path('post/<int:pk>/edit/', views.post_edit, name='post_edit'),
     path('post/<int:pk>/delete/', views.post_delete, name='post_delete'),
     path('game/<int:game_pk>/chat/', views.game_chat, name='game_chat'),
+    path('topic/<int:pk>/delete/', views.topic_delete, name='topic_delete'),
 ]
