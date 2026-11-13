@@ -126,3 +126,9 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/'
 LOGIN_URL = 'login'
+
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+DEFAULT_FROM_EMAIL = 'Playlog <noreply@playlog.local>'
+
+# Срок жизни ссылки подтверждения (в секундах): 24 часа
+PASSWORD_RESET_TIMEOUT = 60 * 60 * 24
