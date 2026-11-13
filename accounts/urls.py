@@ -19,4 +19,5 @@ urlpatterns = [
     path('steam/link/', views.steam_link_start, name='steam_link'),
     path('steam/callback/', views.steam_link_callback, name='steam_callback'),
     path('steam/unlink/', views.steam_unlink, name='steam_unlink'),
+    path('library/<int:pk>/open/', views.library_open, name='library_open'),
 ]

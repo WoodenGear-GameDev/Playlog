@@ -28,4 +28,27 @@
     <button type="submit">Привязать Steam</button>
 </form>
 {% endif %}
+<h2 id="library">Библиотека Steam{% if page.paginator.count %} ({{ page.paginator.count }}){% endif %}</h2>
+{% if page.paginator.count %}
+<div class="library-grid">
+    {% for entry in page %}
+    <a class="library-card" href="{% url 'library_open' entry.pk %}?page={{ page.number }}">
+        <!-- Сюда можно подставить обложку игры -->
+        <span class="library-title">{{ entry.display_name }}</span>
+        <small>{{ entry.playtime_hours }} ч</small>
+    </a>
+    {% endfor %}
+</div>
+{% if page.has_other_pages %}
+<p>
+    {% if page.has_previous %}<a href="?page={{ page.previous_page_number }}#library">← Назад</a>{% endif %}
+    Страница {{ page.number }} из {{ page.paginator.num_pages }}
+    {% if page.has_next %}<a href="?page={{ page.next_page_number }}#library">Вперёд →</a>{% endif %}
+</p>
+{% endif %}
+{% elif profile.steam_id %}
+<p>Библиотека пока пуста.</p>
+{% else %}
+<p>Привяжите Steam, чтобы увидеть здесь свою библиотеку игр.</p>
+{% endif %}
 {% endblock %}

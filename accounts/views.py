@@ -19,7 +19,14 @@ from .confirmation import (
     send_confirmation_email,
 )
 from .forms import AvatarForm, RegisterForm, ResendConfirmationForm, UsernameForm
-from .models import Profile
+
+from django.core.paginator import Paginator
+
+from catalog.models import Game
+
+from .models import LibraryGame, Profile
+
+from django.shortcuts import get_object_or_404
 
 
 def register(request):
@@ -57,7 +64,9 @@ def resend_confirmation(request):
 
 @login_required
 def profile(request):
-    return render(request, 'accounts/profile.html', {'profile': request.user.profile})
+    profile, _ = Profile.objects.get_or_create(user=request.user)
+    page = Paginator(profile.library.all(), 48).get_page(request.GET.get('page'))
+    return render(request, 'accounts/profile.html', {'profile': profile, 'page': page})
 
 def activate(request, uidb64, token):
     User = get_user_model()
@@ -125,6 +134,7 @@ def steam_link_callback(request):
         )
         return redirect('profile')
 
+    old_steam_id = profile.steam_id
     profile.steam_id = steam_id
     try:
         profile.save(update_fields=['steam_id'])
@@ -133,6 +143,10 @@ def steam_link_callback(request):
             request, 'Этот Steam-аккаунт уже привязан к другому пользователю.'
         )
         return redirect('profile')
+
+    # Библиотека принадлежала прежнему аккаунту, при смене её нужно убрать
+    if old_steam_id and old_steam_id != steam_id:
+        profile.library.all().delete()
 
     messages.success(request, 'Steam-аккаунт подтверждён и привязан.')
     return redirect('profile')
@@ -144,5 +158,23 @@ def steam_unlink(request):
     profile, _ = Profile.objects.get_or_create(user=request.user)
     profile.steam_id = ''
     profile.save(update_fields=['steam_id'])
+    profile.steam_id = ''
+    profile.save(update_fields=['steam_id'])
+    profile.library.all().delete()
     messages.success(request, 'Steam-аккаунт отвязан.')
     return redirect('profile')
+
+@login_required
+def library_open(request, pk):
+    # Только свои записи: чужие id дают 404
+    entry = get_object_or_404(LibraryGame, pk=pk, profile__user=request.user)
+    game = Game.objects.filter(steam_app_id=entry.steam_app_id).first()
+    if game:
+        return redirect('game_detail', pk=game.pk)
+
+    messages.info(
+        request, f'Игры «{entry.display_name}» пока нет в каталоге сайта.'
+    )
+    page_number = request.GET.get('page', '')
+    suffix = f'?page={page_number}' if page_number.isdigit() else ''
+    return redirect(f"{reverse('profile')}{suffix}#library")
