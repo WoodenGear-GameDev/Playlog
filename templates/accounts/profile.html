@@ -1,0 +1,9 @@
+{% extends 'base.html' %}
+
+{% block title %}Профиль | Playlog{% endblock %}
+
+{% block content %}
+<h1>Профиль: {{ user.username }}</h1>
+<p>SteamID64: {{ profile.steam_id|default:"не указан" }}</p>
+<p><em>Здесь появятся форма SteamID64, игры и статусы.</em></p>
+{% endblock %}
