@@ -4,6 +4,12 @@
 
 {% block content %}
 <h1>Профиль: {{ user.username }}</h1>
+{% if profile.avatar %}
+<img src="{{ profile.avatar.url }}" alt="Аватар" width="128">
+{% else %}
+<p>Аватар не задан.</p>
+{% endif %}
 <p>SteamID64: {{ profile.steam_id|default:"не указан" }}</p>
+<p><a href="{% url 'profile_edit' %}">Редактировать профиль</a></p>
 <p><em>Здесь появятся форма SteamID64, игры и статусы.</em></p>
 {% endblock %}

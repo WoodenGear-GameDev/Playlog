@@ -9,7 +9,8 @@ from .confirmation import (
     purge_expired_unconfirmed,
     send_confirmation_email,
 )
-from .forms import RegisterForm, ResendConfirmationForm
+from .forms import AvatarForm, RegisterForm, ResendConfirmationForm, UsernameForm
+from .models import Profile
 
 
 def register(request):
@@ -61,3 +62,21 @@ def activate(request, uidb64, token):
         user.save(update_fields=['is_active'])
         return render(request, 'accounts/activation_success.html')
     return render(request, 'accounts/activation_failed.html')
+
+@login_required
+def profile_edit(request):
+    profile, _ = Profile.objects.get_or_create(user=request.user)
+    if request.method == 'POST':
+        username_form = UsernameForm(request.POST, instance=request.user)
+        avatar_form = AvatarForm(request.POST, request.FILES, instance=profile)
+        if username_form.is_valid() and avatar_form.is_valid():
+            username_form.save()
+            avatar_form.save()
+            return redirect('profile')
+    else:
+        username_form = UsernameForm(instance=request.user)
+        avatar_form = AvatarForm(instance=profile)
+    return render(request, 'accounts/profile_edit.html', {
+        'username_form': username_form,
+        'avatar_form': avatar_form,
+    })

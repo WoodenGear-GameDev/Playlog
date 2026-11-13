@@ -15,4 +15,5 @@ urlpatterns = [
     path('activate/<uidb64>/<token>/', views.activate, name='activate'),
     path('register/done/', views.register_done, name='register_done'),
     path('resend/', views.resend_confirmation, name='resend_confirmation'),
+    path('profile/edit/', views.profile_edit, name='profile_edit'),
 ]
