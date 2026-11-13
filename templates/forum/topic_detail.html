@@ -11,21 +11,51 @@
     {{ topic.body|linebreaks }}
 </article>
 
-<h2>Ответы</h2>
-{% for post in posts %}
+<h2>Ответы ({{ page.paginator.count }})</h2>
+{% for post in page %}
 <article id="post-{{ post.pk }}" class="post">
     <p><strong>{{ post.author.username }}</strong> · {{ post.created_at|date:"d.m.Y H:i" }}</p>
     {% if post.reply_to %}
     <blockquote>
-        <a href="#post-{{ post.reply_to.pk }}">{{ post.reply_to.author.username }}</a>:
+        <a href="{% url 'post_permalink' post.reply_to.pk %}">{{ post.reply_to.author.username }}</a>:
         {{ post.reply_to.body|truncatechars:100 }}
     </blockquote>
     {% endif %}
     {{ post.body|linebreaks }}
+    {% if user.is_authenticated %}
+    <p><a href="?page={{ page.number }}&amp;reply={{ post.pk }}#reply-form">Ответить</a></p>
+    {% endif %}
 </article>
 {% empty %}
 <p>Ответов пока нет.</p>
 {% endfor %}
 
-<p><em>Форма ответа появится на следующем шаге.</em></p>
+{% if page.has_other_pages %}
+<p>
+    {% if page.has_previous %}<a href="?page={{ page.previous_page_number }}">← Назад</a>{% endif %}
+    Страница {{ page.number }} из {{ page.paginator.num_pages }}
+    {% if page.has_next %}<a href="?page={{ page.next_page_number }}">Вперёд →</a>{% endif %}
+</p>
+{% endif %}
+
+<section id="reply-form">
+    <h2>Ваш ответ</h2>
+    {% if user.is_authenticated %}
+    <form method="post">
+        {% csrf_token %}
+        {% if reply_target %}
+        <blockquote>
+            В ответ на {{ reply_target.author.username }}:
+            {{ reply_target.body|truncatechars:100 }}
+            <a href="?page={{ page.number }}#reply-form">Отменить ответ</a>
+        </blockquote>
+        <input type="hidden" name="reply_to" value="{{ reply_target.pk }}">
+        {% endif %}
+        {{ form.as_p }}
+        <button type="submit">Отправить</button>
+    </form>
+    {% else %}
+    <p><a href="{% url 'login' %}?next={{ request.get_full_path|urlencode }}">Войдите</a>, чтобы ответить.</p>
+    {% endif %}
+</section>
 {% endblock %}
