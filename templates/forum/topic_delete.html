@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+
+{% block title %}Удаление темы | Playlog{% endblock %}
+
+{% block content %}
+<h1>Удалить тему?</h1>
+<p>Тема: <strong>{{ topic.title }}</strong> (автор: {{ topic.author.username }})</p>
+<p>Вместе с ней будет удалено сообщений: <strong>{{ posts_count }}</strong>.
+Это действие нельзя отменить.</p>
+<form method="post">
+    {% csrf_token %}
+    <button type="submit">Да, удалить тему</button>
+    <a href="{% url 'topic_detail' topic.pk %}">Отмена</a>
+</form>
+{% endblock %}

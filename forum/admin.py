@@ -12,6 +12,7 @@ class TopicAdmin(admin.ModelAdmin):
 
 @admin.register(Post)
 class PostAdmin(admin.ModelAdmin):
-    list_display = ('topic', 'author', 'created_at')
+    list_display = ('__str__', 'topic', 'game', 'author', 'created_at', 'is_deleted')
+    list_filter = ('is_deleted',)
     search_fields = ('body', 'author__username')
-    raw_id_fields = ('topic', 'reply_to')
+    raw_id_fields = ('topic', 'game', 'reply_to')
