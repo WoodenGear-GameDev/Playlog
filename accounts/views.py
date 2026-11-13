@@ -134,6 +134,7 @@ def steam_link_callback(request):
         )
         return redirect('profile')
 
+    old_steam_id = profile.steam_id
     profile.steam_id = steam_id
     try:
         profile.save(update_fields=['steam_id'])
@@ -142,6 +143,10 @@ def steam_link_callback(request):
             request, 'Этот Steam-аккаунт уже привязан к другому пользователю.'
         )
         return redirect('profile')
+
+    # Библиотека принадлежала прежнему аккаунту, при смене её нужно убрать
+    if old_steam_id and old_steam_id != steam_id:
+        profile.library.all().delete()
 
     messages.success(request, 'Steam-аккаунт подтверждён и привязан.')
     return redirect('profile')
@@ -153,6 +158,9 @@ def steam_unlink(request):
     profile, _ = Profile.objects.get_or_create(user=request.user)
     profile.steam_id = ''
     profile.save(update_fields=['steam_id'])
+    profile.steam_id = ''
+    profile.save(update_fields=['steam_id'])
+    profile.library.all().delete()
     messages.success(request, 'Steam-аккаунт отвязан.')
     return redirect('profile')
 
