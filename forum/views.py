@@ -15,6 +15,7 @@ from .forms import PostForm, TopicForm
 from .models import Post, Topic
 
 POSTS_PER_PAGE = 20
+CHAT_PER_PAGE = 30
 
 
 def topic_list(request, game_pk):
@@ -87,9 +88,16 @@ def _reply_target(posts, raw_id):
 
 def post_permalink(request, pk):
     post = get_object_or_404(Post, pk=pk)
-    position = Post.objects.filter(topic_id=post.topic_id, pk__lt=post.pk).count()
-    page_number = position // POSTS_PER_PAGE + 1
-    url = reverse('topic_detail', args=[post.topic_id])
+    if post.topic_id:
+        siblings = Post.objects.filter(topic_id=post.topic_id)
+        per_page = POSTS_PER_PAGE
+        url = reverse('topic_detail', args=[post.topic_id])
+    else:
+        siblings = Post.objects.filter(game_id=post.game_id)
+        per_page = CHAT_PER_PAGE
+        url = reverse('game_chat', args=[post.game_id])
+    position = siblings.filter(pk__lt=post.pk).count()
+    page_number = position // per_page + 1
     return redirect(f'{url}?page={page_number}#post-{post.pk}')
 
 @login_required
@@ -126,3 +134,34 @@ def post_delete(request, pk):
         post.save(update_fields=['is_deleted', 'body'])
         messages.success(request, 'Сообщение удалено.')
     return redirect('post_permalink', pk=post.pk)
+
+def game_chat(request, game_pk):
+    game = get_object_or_404(Game, pk=game_pk)
+    chat_posts = game.chat_posts.all()
+
+    if request.method == 'POST':
+        if not request.user.is_authenticated:
+            return redirect_to_login(request.get_full_path())
+        form = PostForm(request.POST)
+        reply_target = _reply_target(chat_posts, request.POST.get('reply_to'))
+        if form.is_valid():
+            post = form.save(commit=False)
+            post.game = game
+            post.author = request.user
+            post.reply_to = reply_target
+            post.save()
+            return redirect('post_permalink', pk=post.pk)
+    else:
+        form = PostForm()
+        reply_target = _reply_target(chat_posts, request.GET.get('reply'))
+
+    posts = chat_posts.select_related('author', 'reply_to__author')
+    paginator = Paginator(posts, CHAT_PER_PAGE)
+    # Без номера страницы открываем последнюю: новые сообщения внизу
+    page = paginator.get_page(request.GET.get('page') or paginator.num_pages)
+    return render(request, 'forum/game_chat.html', {
+        'game': game,
+        'page': page,
+        'form': form,
+        'reply_target': reply_target,
+    })

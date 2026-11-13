@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+
+{% block title %}Общий чат: {{ game }} | Playlog{% endblock %}
+
+{% block content %}
+<h1>Общий чат: {{ game }}</h1>
+<p>
+    <a href="{% url 'game_detail' game.pk %}">← К странице игры</a> ·
+    <a href="{% url 'topic_list' game.pk %}">Темы форума</a>
+</p>
+
+{% if page.has_previous %}
+<p><a href="?page={{ page.previous_page_number }}">↑ Более ранние сообщения</a></p>
+{% endif %}
+
+{% for post in page %}
+    {% include 'forum/_post.html' %}
+{% empty %}
+<p>В чате пока нет сообщений. Напишите первое!</p>
+{% endfor %}
+
+{% if page.has_next %}
+<p><a href="?page={{ page.next_page_number }}">↓ Более поздние сообщения</a></p>
+{% endif %}
+
+{% include 'forum/_reply_form.html' with form_title='Написать в чат' login_hint='написать в чат' %}
+{% endblock %}
