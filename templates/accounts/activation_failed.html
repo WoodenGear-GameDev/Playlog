@@ -1,0 +1,9 @@
+{% extends 'base.html' %}
+
+{% block title %}Ссылка недействительна | Playlog{% endblock %}
+
+{% block content %}
+<h1>Ссылка недействительна</h1>
+<p>Она устарела или уже была использована.</p>
+<p><a href="{% url 'resend_confirmation' %}">Отправить письмо повторно</a></p>
+{% endblock %}
