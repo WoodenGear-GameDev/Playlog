@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ game }} | Playlog{% endblock %}
+
+{% block content %}
+<h1>{{ game }}</h1>
+{% if game.header_image %}<img src="{{ game.header_image }}" alt="" width="400">{% endif %}
+<p>Категории:
+    {% for category in game.categories.all %}{{ category.name }}{% if not forloop.last %}, {% endif %}{% empty %}не указаны{% endfor %}
+</p>
+<p>Дата выхода: {{ game.release_date|default:"не указана" }}</p>
+<p>{{ game.description|default:"Описания пока нет." }}</p>
+<h2>Оценка</h2>
+{% if stats.count %}
+<p>Средняя оценка: <strong>{{ stats.average|floatformat:1 }}</strong> из 10
+    (оценок: {{ stats.count }})</p>
+{% else %}
+<p>Оценок пока нет.</p>
+{% endif %}
+
+{% if user.is_authenticated %}
+<form method="post" action="{% url 'rate_game' game.pk %}">
+    {% csrf_token %}
+    {{ rating_form.as_p }}
+    <button type="submit">{% if user_rating %}Изменить оценку{% else %}Оценить{% endif %}</button>
+</form>
+{% if user_rating %}
+<form method="post" action="{% url 'delete_rating' game.pk %}">
+    {% csrf_token %}
+    <button type="submit">Удалить мою оценку</button>
+</form>
+{% endif %}
+{% else %}
+<p><a href="{% url 'login' %}?next={{ request.path }}">Войдите</a>, чтобы поставить оценку.</p>
+{% endif %}
+<p><a href="{% url 'home' %}">← Назад в каталог</a></p>
+{% endblock %}

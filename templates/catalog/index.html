@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+
+{% block title %}Каталог | Playlog{% endblock %}
+
+{% block content %}
+<h1>Каталог игр</h1>
+
+{% for category in categories %}
+    {% if category.games.all %}
+    <section class="category-row">
+        <h2>{{ category.name }}</h2>
+        <div class="game-strip" style="display:flex; gap:1rem; overflow-x:auto;">
+            {% for game in category.games.all %}
+            <a class="game-card" href="{% url 'game_detail' game.pk %}" style="flex:0 0 auto;">
+                {% if game.header_image %}
+                <img src="{{ game.header_image }}" alt="" width="200"><br>
+                {% endif %}
+                {{ game }}
+            </a>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+{% endfor %}
+
+{% if uncategorized %}
+<section class="category-row">
+    <h2>Без категории</h2>
+    <div class="game-strip" style="display:flex; gap:1rem; overflow-x:auto;">
+        {% for game in uncategorized %}
+        <a class="game-card" href="{% url 'game_detail' game.pk %}" style="flex:0 0 auto;">{{ game }}</a>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+{% if not categories and not uncategorized %}
+<p>Игр пока нет. Добавьте их через админку.</p>
+{% endif %}
+{% endblock %}

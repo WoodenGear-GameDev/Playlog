@@ -1,0 +1,10 @@
+{% extends 'base.html' %}
+
+{% block title %}Проверьте почту | Playlog{% endblock %}
+
+{% block content %}
+<h1>Проверьте почту</h1>
+<p>Если адрес указан верно, мы отправили письмо со ссылкой для подтверждения.
+Ссылка действует 24 часа.</p>
+<p><a href="{% url 'resend_confirmation' %}">Письмо не пришло?</a></p>
+{% endblock %}

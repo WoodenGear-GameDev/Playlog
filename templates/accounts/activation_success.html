@@ -1,0 +1,9 @@
+{% extends 'base.html' %}
+
+{% block title %}Почта подтверждена | Playlog{% endblock %}
+
+{% block content %}
+<h1>Почта подтверждена</h1>
+<p>Теперь вы можете <a href="{% url 'login' %}?next={% url 'profile' %}">войти</a>.
+После входа вы попадёте в профиль, где можно привязать Steam (это необязательно).</p>
+{% endblock %}

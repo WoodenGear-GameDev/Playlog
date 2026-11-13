@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+
+{% block title %}Вход | Playlog{% endblock %}
+
+{% block content %}
+<h1>Вход</h1>
+<form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Войти</button>
+</form>
+<p><a href="{% url 'resend_confirmation' %}">Не пришло письмо подтверждения?</a></p>
+<p><a href="{% url 'register' %}">Нет аккаунта? Зарегистрироваться</a></p>
+{% endblock %}

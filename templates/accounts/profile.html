@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+
+{% block title %}Профиль | Playlog{% endblock %}
+
+{% block content %}
+<h1>Профиль: {{ user.username }}</h1>
+{% if profile.avatar %}
+<img src="{{ profile.avatar.url }}" alt="Аватар" width="128">
+{% else %}
+<p>Аватар не задан.</p>
+{% endif %}
+<p><a href="{% url 'profile_edit' %}">Редактировать профиль</a></p>
+
+<h2>Steam</h2>
+{% if profile.steam_id %}
+<p>Привязан аккаунт:
+    <a href="https://steamcommunity.com/profiles/{{ profile.steam_id }}">{{ profile.steam_id }}</a>
+    (подтверждён через Steam)
+</p>
+<form method="post" action="{% url 'steam_unlink' %}">
+    {% csrf_token %}
+    <button type="submit">Отвязать Steam</button>
+</form>
+{% else %}
+<p>Steam не привязан. Привяжите аккаунт, чтобы увидеть свою библиотеку игр.</p>
+<form method="post" action="{% url 'steam_link' %}">
+    {% csrf_token %}
+    <button type="submit">Привязать Steam</button>
+</form>
+{% endif %}
+{% endblock %}
