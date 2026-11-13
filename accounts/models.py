@@ -28,6 +28,13 @@ class Profile(models.Model):
     class Meta:
         verbose_name = 'Профиль'
         verbose_name_plural = 'Профили'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['steam_id'],
+                condition=~models.Q(steam_id=''),
+                name='unique_nonempty_steam_id',
+            ),
+        ]
 
     def __str__(self):
         return f'Профиль {self.user.username}'
