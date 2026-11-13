@@ -12,4 +12,7 @@ urlpatterns = [
     ),
     path('logout/', auth_views.LogoutView.as_view(), name='logout'),
     path('profile/', views.profile, name='profile'),
+    path('activate/<uidb64>/<token>/', views.activate, name='activate'),
+    path('register/done/', views.register_done, name='register_done'),
+    path('resend/', views.resend_confirmation, name='resend_confirmation'),
 ]

@@ -9,4 +9,6 @@
     {{ form.as_p }}
     <button type="submit">Войти</button>
 </form>
+<p><a href="{% url 'resend_confirmation' %}">Не пришло письмо подтверждения?</a></p>
+<p><a href="{% url 'register' %}">Нет аккаунта? Зарегистрироваться</a></p>
 {% endblock %}
