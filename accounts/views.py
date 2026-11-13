@@ -35,8 +35,16 @@ def register(request):
         form = RegisterForm(request.POST)
         if form.is_valid():
             user = form.save()
-            send_confirmation_email(request, user)
-            return redirect('register_done')
+            try:
+                send_confirmation_email(request, user)
+            except Exception:
+                user.delete()
+                form.add_error(
+                    None,
+                    'Не удалось отправить письмо. Проверьте адрес и попробуйте позже.',
+                )
+            else:
+                return redirect('register_done')
     else:
         form = RegisterForm()
     return render(request, 'accounts/register.html', {'form': form})
@@ -56,7 +64,15 @@ def resend_confirmation(request):
                 last_login__isnull=True,
             ).first()
             if user:
-                send_confirmation_email(request, user)
+                try:
+                    send_confirmation_email(request, user)
+                except Exception:
+                    form.add_error(
+                        None, 'Не удалось отправить письмо. Попробуйте позже.'
+                    )
+                    return render(
+                        request, 'accounts/resend_confirmation.html', {'form': form}
+                    )
             return redirect('register_done')
     else:
         form = ResendConfirmationForm()
