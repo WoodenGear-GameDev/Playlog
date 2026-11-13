@@ -17,8 +17,10 @@ POSTS_PER_PAGE = 20
 
 def topic_list(request, game_pk):
     game = get_object_or_404(Game, pk=game_pk)
-    topics = game.topics.select_related('author').annotate(
-        posts_count=Count('posts')
+    topics = (
+        game.topics.select_related('author')
+        .annotate(posts_count=Count('posts'))
+        .order_by('-last_activity', '-pk')
     )
     page = Paginator(topics, 20).get_page(request.GET.get('page'))
     return render(request, 'forum/topic_list.html', {'game': game, 'page': page})
