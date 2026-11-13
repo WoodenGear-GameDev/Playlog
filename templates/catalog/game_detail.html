@@ -1,0 +1,10 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ game.title }} | Playlog{% endblock %}
+
+{% block content %}
+<h1>{{ game.title }}</h1>
+<p>Дата выхода: {{ game.release_date|default:"не указана" }}</p>
+<p>{{ game.description|default:"Описания пока нет." }}</p>
+<p><a href="{% url 'home' %}">← Назад в каталог</a></p>
+{% endblock %}

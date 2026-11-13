@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+
+{% block title %}Каталог | Playlog{% endblock %}
+
+{% block content %}
+<h1>Каталог игр</h1>
+{% if games %}
+<ul>
+    {% for game in games %}
+    <li><a href="{% url 'game_detail' game.pk %}">{{ game.title }}</a></li>
+    {% endfor %}
+</ul>
+{% else %}
+<p>Игр пока нет. Добавьте их через админку.</p>
+{% endif %}
+{% endblock %}
