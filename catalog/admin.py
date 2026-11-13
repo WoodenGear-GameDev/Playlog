@@ -1,6 +1,6 @@
 from django.contrib import admin, messages
 
-from .models import Category, Game
+from .models import Category, Game, Rating
 from .sync import sync_game
 
 
@@ -34,3 +34,9 @@ class GameAdmin(admin.ModelAdmin):
     def refresh_from_steam(self, request, queryset):
         updated = sum(sync_game(game, overwrite=True) for game in queryset)
         self.message_user(request, f'Обновлено игр: {updated} из {queryset.count()}')
+
+@admin.register(Rating)
+class RatingAdmin(admin.ModelAdmin):
+    list_display = ('game', 'user', 'value', 'updated_at')
+    list_filter = ('value',)
+    search_fields = ('game__title', 'user__username')
