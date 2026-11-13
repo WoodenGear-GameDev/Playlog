@@ -35,9 +35,19 @@ class Topic(models.Model):
 class Post(models.Model):
     topic = models.ForeignKey(
         Topic,
+        null=True,
+        blank=True,
         on_delete=models.CASCADE,
         related_name='posts',
         verbose_name='Тема',
+    )
+    game = models.ForeignKey(
+        'catalog.Game',
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name='chat_posts',
+        verbose_name='Игра (общий чат)',
     )
     author = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -55,11 +65,22 @@ class Post(models.Model):
         verbose_name='В ответ на',
     )
     created_at = models.DateTimeField('Создано', auto_now_add=True)
+    edited_at = models.DateTimeField('Изменено', null=True, blank=True)
+    is_deleted = models.BooleanField('Удалено', default=False)
 
     class Meta:
         verbose_name = 'Сообщение'
         verbose_name_plural = 'Сообщения'
         ordering = ['created_at', 'id']
+        constraints = [
+            models.CheckConstraint(
+                condition=(
+                    models.Q(topic__isnull=False, game__isnull=True)
+                    | models.Q(topic__isnull=True, game__isnull=False)
+                ),
+                name='post_in_topic_or_game_chat',
+            ),
+        ]
 
     def __str__(self):
         return f'{self.author}: {self.body[:40]}'
