@@ -132,3 +132,6 @@ DEFAULT_FROM_EMAIL = 'Playlog <noreply@playlog.local>'
 
 # Срок жизни ссылки подтверждения (в секундах): 24 часа
 PASSWORD_RESET_TIMEOUT = 60 * 60 * 24
+
+MEDIA_URL = 'media/'
+MEDIA_ROOT = BASE_DIR / 'media'

@@ -3,13 +3,23 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect, render
 from django.utils.encoding import force_str
 from django.utils.http import urlsafe_base64_decode
+import secrets
+from urllib.parse import urlencode
+
+from django.contrib import messages
+from django.db import IntegrityError
+from django.urls import reverse
+from django.views.decorators.http import require_POST
+
+from .steam_openid import build_login_url, verify_assertion
 
 from .confirmation import (
     activation_token,
     purge_expired_unconfirmed,
     send_confirmation_email,
 )
-from .forms import RegisterForm, ResendConfirmationForm
+from .forms import AvatarForm, RegisterForm, ResendConfirmationForm, UsernameForm
+from .models import Profile
 
 
 def register(request):
@@ -61,3 +71,78 @@ def activate(request, uidb64, token):
         user.save(update_fields=['is_active'])
         return render(request, 'accounts/activation_success.html')
     return render(request, 'accounts/activation_failed.html')
+
+@login_required
+def profile_edit(request):
+    profile, _ = Profile.objects.get_or_create(user=request.user)
+    if request.method == 'POST':
+        username_form = UsernameForm(request.POST, instance=request.user)
+        avatar_form = AvatarForm(request.POST, request.FILES, instance=profile)
+        if username_form.is_valid() and avatar_form.is_valid():
+            username_form.save()
+            avatar_form.save()
+            return redirect('profile')
+    else:
+        username_form = UsernameForm(instance=request.user)
+        avatar_form = AvatarForm(instance=profile)
+    return render(request, 'accounts/profile_edit.html', {
+        'username_form': username_form,
+        'avatar_form': avatar_form,
+    })
+
+@login_required
+@require_POST
+def steam_link_start(request):
+    state = secrets.token_urlsafe(24)
+    return_to = (
+        request.build_absolute_uri(reverse('steam_callback'))
+        + '?'
+        + urlencode({'state': state})
+    )
+    request.session['steam_link_return_to'] = return_to
+    realm = request.build_absolute_uri('/')
+    return redirect(build_login_url(return_to, realm))
+
+
+@login_required
+def steam_link_callback(request):
+    expected_return_to = request.session.pop('steam_link_return_to', None)
+    steam_id = None
+    if expected_return_to:
+        steam_id = verify_assertion(request.GET, expected_return_to)
+
+    if not steam_id:
+        messages.error(
+            request, 'Не удалось подтвердить Steam-аккаунт. Попробуйте ещё раз.'
+        )
+        return redirect('profile')
+
+    profile, _ = Profile.objects.get_or_create(user=request.user)
+    taken = Profile.objects.filter(steam_id=steam_id).exclude(pk=profile.pk)
+    if taken.exists():
+        messages.error(
+            request, 'Этот Steam-аккаунт уже привязан к другому пользователю.'
+        )
+        return redirect('profile')
+
+    profile.steam_id = steam_id
+    try:
+        profile.save(update_fields=['steam_id'])
+    except IntegrityError:
+        messages.error(
+            request, 'Этот Steam-аккаунт уже привязан к другому пользователю.'
+        )
+        return redirect('profile')
+
+    messages.success(request, 'Steam-аккаунт подтверждён и привязан.')
+    return redirect('profile')
+
+
+@login_required
+@require_POST
+def steam_unlink(request):
+    profile, _ = Profile.objects.get_or_create(user=request.user)
+    profile.steam_id = ''
+    profile.save(update_fields=['steam_id'])
+    messages.success(request, 'Steam-аккаунт отвязан.')
+    return redirect('profile')
