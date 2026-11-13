@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ topic.title }} | Playlog{% endblock %}
+
+{% block content %}
+<p><a href="{% url 'topic_list' topic.game.pk %}">← Форум: {{ topic.game }}</a></p>
+
+<h1>{{ topic.title }}</h1>
+{% if user.is_staff %}
+<p><a href="{% url 'topic_delete' topic.pk %}">Удалить тему (модератор)</a></p>
+{% endif %}
+<article class="topic-body">
+    <p><strong>{{ topic.author.username }}</strong> · {{ topic.created_at|date:"d.m.Y H:i" }}</p>
+    {{ topic.body|linebreaks }}
+</article>
+
+<h2>Ответы</h2>
+{% for post in page %}
+    {% include 'forum/_post.html' %}
+{% empty %}
+<p>Ответов пока нет.</p>
+{% endfor %}
+
+{% if page.has_other_pages %}
+<p>
+    {% if page.has_previous %}<a href="?page={{ page.previous_page_number }}">← Назад</a>{% endif %}
+    Страница {{ page.number }} из {{ page.paginator.num_pages }}
+    {% if page.has_next %}<a href="?page={{ page.next_page_number }}">Вперёд →</a>{% endif %}
+</p>
+{% endif %}
+
+{% include 'forum/_reply_form.html' %}
+{% endblock %}

@@ -38,3 +38,42 @@ class Profile(models.Model):
 
     def __str__(self):
         return f'Профиль {self.user.username}'
+
+class LibraryGame(models.Model):
+    """Игра из библиотеки Steam пользователя.
+
+    Сейчас заполняется вручную через админку. Позже библиотеку будет
+    загружать код синхронизации со Steam (отдельная задача).
+    """
+
+    profile = models.ForeignKey(
+        Profile,
+        on_delete=models.CASCADE,
+        related_name='library',
+        verbose_name='Профиль',
+    )
+    steam_app_id = models.PositiveIntegerField('Steam AppID')
+    name = models.CharField('Название', max_length=200, blank=True)
+    playtime_minutes = models.PositiveIntegerField('Время в игре (мин)', default=0)
+
+    class Meta:
+        verbose_name = 'Игра в библиотеке'
+        verbose_name_plural = 'Библиотека'
+        ordering = ['-playtime_minutes', 'name']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['profile', 'steam_app_id'],
+                name='unique_library_game_per_profile',
+            ),
+        ]
+
+    def __str__(self):
+        return self.display_name
+
+    @property
+    def display_name(self):
+        return self.name or f'Steam app {self.steam_app_id}'
+
+    @property
+    def playtime_hours(self):
+        return round(self.playtime_minutes / 60, 1)

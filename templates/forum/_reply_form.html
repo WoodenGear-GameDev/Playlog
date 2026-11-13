@@ -1,0 +1,21 @@
+<section id="reply-form">
+    <h2>{{ form_title|default:"Ваш ответ" }}</h2>
+    {% if user.is_authenticated %}
+    <form method="post">
+        {% csrf_token %}
+        {% if reply_target %}
+        <blockquote>
+            В ответ на {{ reply_target.author.username }}:
+            {{ reply_target.body|truncatechars:100 }}
+            <a href="?page={{ page.number }}#reply-form">Отменить ответ</a>
+        </blockquote>
+        <input type="hidden" name="reply_to" value="{{ reply_target.pk }}">
+        {% endif %}
+        {{ form.as_p }}
+        <button type="submit">Отправить</button>
+    </form>
+    {% else %}
+    <p><a href="{% url 'login' %}?next={{ request.get_full_path|urlencode }}">Войдите</a>,
+        чтобы {{ login_hint|default:"ответить" }}.</p>
+    {% endif %}
+</section>
