@@ -1,0 +1,36 @@
+<article id="post-{{ post.pk }}" class="post{% if post.is_deleted %} post-deleted{% endif %}">
+    <p>
+        <strong>{{ post.author.username }}</strong> · {{ post.created_at|date:"d.m.Y H:i" }}
+        {% if post.edited_at and not post.is_deleted %} · <em>изменено</em>{% endif %}
+    </p>
+    {% if post.is_deleted %}
+    <p><em>Сообщение удалено.</em></p>
+    {% else %}
+        {% if post.reply_to %}
+        <blockquote>
+            {% if post.reply_to.is_deleted %}
+            <em>Сообщение удалено.</em>
+            {% else %}
+            <a href="{% url 'post_permalink' post.reply_to.pk %}">{{ post.reply_to.author.username }}</a>:
+            {{ post.reply_to.body|truncatechars:100 }}
+            {% endif %}
+        </blockquote>
+        {% endif %}
+        {{ post.body|linebreaks }}
+        {% if user.is_authenticated %}
+        <p>
+            <a href="?page={{ page.number }}&amp;reply={{ post.pk }}#reply-form">Ответить</a>
+            {% if post.author_id == user.pk %}
+            · <a href="{% url 'post_edit' post.pk %}">Изменить</a>
+            {% endif %}
+            {% if post.author_id == user.pk or user.is_staff %}
+            <form method="post" action="{% url 'post_delete' post.pk %}" style="display:inline"
+                  onsubmit="return confirm('Удалить сообщение?');">
+                {% csrf_token %}
+                <button type="submit">Удалить</button>
+            </form>
+            {% endif %}
+        </p>
+        {% endif %}
+    {% endif %}
+</article>
