@@ -1,9 +1,13 @@
 {% extends 'base.html' %}
 
-{% block title %}{{ game.title }} | Playlog{% endblock %}
+{% block title %}{{ game }} | Playlog{% endblock %}
 
 {% block content %}
-<h1>{{ game.title }}</h1>
+<h1>{{ game }}</h1>
+{% if game.header_image %}<img src="{{ game.header_image }}" alt="" width="400">{% endif %}
+<p>Категории:
+    {% for category in game.categories.all %}{{ category.name }}{% if not forloop.last %}, {% endif %}{% empty %}не указаны{% endfor %}
+</p>
 <p>Дата выхода: {{ game.release_date|default:"не указана" }}</p>
 <p>{{ game.description|default:"Описания пока нет." }}</p>
 <p><a href="{% url 'home' %}">← Назад в каталог</a></p>
