@@ -33,5 +33,6 @@
 {% else %}
 <p><a href="{% url 'login' %}?next={{ request.path }}">Войдите</a>, чтобы поставить оценку.</p>
 {% endif %}
+<p><a href="{% url 'topic_list' game.pk %}">Форум игры (тем: {{ game.topics.count }})</a></p>
 <p><a href="{% url 'home' %}">← Назад в каталог</a></p>
 {% endblock %}
