@@ -3,6 +3,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.forms import UserCreationForm
 from django.core.files.storage import default_storage
 from django.core.files.uploadedfile import UploadedFile
+from .images import compress_avatar
 
 from .models import Profile
 
@@ -48,7 +49,7 @@ class UsernameForm(forms.ModelForm):
 
 
 class AvatarForm(forms.ModelForm):
-    MAX_SIZE = 2 * 1024 * 1024  # 2 МБ
+    MAX_UPLOAD_SIZE = 10 * 1024 * 1024  # 10 МБ до сжатия
 
     class Meta:
         model = Profile
@@ -61,8 +62,13 @@ class AvatarForm(forms.ModelForm):
 
     def clean_avatar(self):
         avatar = self.cleaned_data.get('avatar')
-        if isinstance(avatar, UploadedFile) and avatar.size > self.MAX_SIZE:
-            raise forms.ValidationError('Файл слишком большой. Максимум 2 МБ.')
+        if isinstance(avatar, UploadedFile):
+            if avatar.size > self.MAX_UPLOAD_SIZE:
+                raise forms.ValidationError('Файл слишком большой. Максимум 10 МБ.')
+            try:
+                return compress_avatar(avatar)
+            except ValueError as exc:
+                raise forms.ValidationError(str(exc))
         return avatar
 
     def save(self, commit=True):
