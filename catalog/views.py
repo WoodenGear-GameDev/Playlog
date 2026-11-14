@@ -3,6 +3,7 @@ from urllib.parse import urlencode
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
+from django.core.exceptions import PermissionDenied
 from django.db import IntegrityError
 from django.db.models import Avg, Count, F, Q
 from django.shortcuts import get_object_or_404, redirect, render
@@ -195,6 +196,24 @@ def vote_review(request, game_pk, pk):
                 )
             except IntegrityError:
                 pass  # двойной клик: голос уже записан
+
+    return redirect(
+        _reviews_url(game_pk, request.POST.get('sort'), request.POST.get('page'))
+    )
+
+@login_required
+@require_POST
+def delete_review(request, game_pk, pk):
+    rating = get_object_or_404(Rating, pk=pk, game_id=game_pk)
+    if rating.user_id != request.user.pk and not request.user.is_staff:
+        raise PermissionDenied
+
+    # Двойной клик: отзыв уже удалён, повторять нечего
+    if rating.text:
+        rating.votes.all().delete()
+        rating.text = ''
+        rating.save(update_fields=['text', 'updated_at'])
+        messages.success(request, 'Отзыв удалён. Оценка сохранена.')
 
     return redirect(
         _reviews_url(game_pk, request.POST.get('sort'), request.POST.get('page'))

@@ -397,6 +397,18 @@
                         </a>
                         {% endif %}
                         {% endif %}
+                        {% if review.is_mine or user.is_staff %}
+                        <form method="post" action="{% url 'delete_review' game.pk review.pk %}" class="inline sm:ml-auto"
+                              onsubmit="return confirm('Удалить отзыв? Оценка сохранится, текст и голоса под ним будут стёрты.');">
+                            {% csrf_token %}
+                            <input type="hidden" name="sort" value="{{ sort }}">
+                            <input type="hidden" name="page" value="{{ reviews_page.number }}">
+                            <button type="submit"
+                                    class="px-2.5 py-1 font-semibold uppercase border border-paper-300 dark:border-carbon-800 hover:border-red-500 dark:hover:border-red-500 bg-paper-50 dark:bg-carbon-950 text-zinc-600 dark:text-zinc-400 hover:text-red-600 dark:hover:text-red-400 transition-colors">
+                                УДАЛИТЬ ОТЗЫВ{% if not review.is_mine %} (МОДЕРАТОР){% endif %}
+                            </button>
+                        </form>
+                        {% endif %}
                     </div>
                 </div>
             </article>
