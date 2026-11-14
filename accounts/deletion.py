@@ -36,6 +36,17 @@ def _purge_content(user):
     Rating.objects.filter(user=user).delete()
 
 
+def check_can_delete(user):
+    """Бросает DeletionError, если учётную запись удалять нельзя."""
+    if user.is_superuser:
+        others = (
+            get_user_model()
+            .objects.filter(is_superuser=True, is_active=True)
+            .exclude(pk=user.pk)
+        )
+        if not others.exists():
+            raise DeletionError('нельзя удалить последнего активного суперпользователя.')
+
 @transaction.atomic
 def delete_user_account(user, purge_content=False):
     """Удаляет учётную запись.
@@ -44,11 +55,7 @@ def delete_user_account(user, purge_content=False):
     показывается как «Удалённый пользователь».
     purge_content=True: действия пользователя тоже убираются.
     """
-    User = get_user_model()
-    if user.is_superuser:
-        others = User.objects.filter(is_superuser=True, is_active=True).exclude(pk=user.pk)
-        if not others.exists():
-            raise DeletionError('нельзя удалить последнего активного суперпользователя.')
+    check_can_delete(user)
 
     if purge_content:
         _purge_content(user)
