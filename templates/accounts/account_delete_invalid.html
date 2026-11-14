@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+
+{% block title %}Ссылка недействительна // PLAYLOG{% endblock %}
+
+{% block content %}
+<div class="max-w-lg mx-auto my-4 sm:my-10">
+    <div class="border border-paper-300 dark:border-carbon-800 bg-paper-100 dark:bg-carbon-900 p-8 text-center font-mono space-y-3">
+        <p class="text-xs uppercase tracking-widest text-zinc-400 dark:text-zinc-500">[LINK_INVALID]</p>
+        <p class="text-sm text-zinc-700 dark:text-zinc-300">
+            Ссылка недействительна: она устарела, была создана для другого аккаунта или после запроса вы сменили пароль.
+        </p>
+        <a href="{% url 'account_delete' %}" class="inline-block text-xs font-bold text-signal-600 dark:text-signal-400 hover:underline">
+            ЗАПРОСИТЬ НОВУЮ ССЫЛКУ
+        </a>
+    </div>
+</div>
+{% endblock %}
