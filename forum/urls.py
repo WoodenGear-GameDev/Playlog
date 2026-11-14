@@ -11,4 +11,6 @@ urlpatterns = [
     path('post/<int:pk>/delete/', views.post_delete, name='post_delete'),
     path('game/<int:game_pk>/chat/', views.game_chat, name='game_chat'),
     path('topic/<int:pk>/delete/', views.topic_delete, name='topic_delete'),
+    path('game/<int:game_pk>/chat/updates/', views.game_chat_updates, name='game_chat_updates'),
+    path('topic/<int:pk>/updates/', views.topic_updates, name='topic_updates'),
 ]
