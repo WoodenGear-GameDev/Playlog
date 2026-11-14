@@ -7,7 +7,12 @@ from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
-from django.views.decorators.http import require_POST
+from django.http import JsonResponse
+from django.template.loader import render_to_string
+from django.views.decorators.cache import never_cache
+from django.views.decorators.http import require_GET, require_POST
+
+from types import SimpleNamespace
 
 from catalog.models import Game
 
@@ -16,6 +21,7 @@ from .models import Post, Topic
 
 POSTS_PER_PAGE = 20
 CHAT_PER_PAGE = 30
+UPDATES_BATCH = 50
 
 
 def topic_list(request, game_pk):
@@ -74,14 +80,23 @@ def topic_detail(request, pk):
         'page': page,
         'form': form,
         'reply_target': reply_target,
+        'last_id': max((post.pk for post in page), default=0),
+        'live': not page.has_next(),
     })
+
+def _to_int(raw, default=0):
+    """Безопасно превращает строку из запроса в число."""
+    raw = str(raw or '')
+    return int(raw) if raw.isdecimal() and len(raw) < 10 else default
+
 
 def _reply_target(posts, raw_id):
     """Сообщение, на которое отвечают: только из переданного набора."""
-    if raw_id and str(raw_id).isdigit():
+    reply_id = _to_int(raw_id)
+    if reply_id:
         return (
             posts.select_related('author')
-            .filter(pk=raw_id, is_deleted=False)
+            .filter(pk=reply_id, is_deleted=False)
             .first()
         )
     return None
@@ -164,6 +179,8 @@ def game_chat(request, game_pk):
         'page': page,
         'form': form,
         'reply_target': reply_target,
+        'last_id': max((post.pk for post in page), default=0),
+        'live': not page.has_next(),
     })
 
 @login_required
@@ -183,3 +200,46 @@ def topic_delete(request, pk):
         'topic': topic,
         'posts_count': topic.posts.count(),
     })
+
+def _updates_response(request, posts):
+    """JSON с HTML новых сообщений, id которых больше параметра after."""
+    after = request.GET.get('after', '')
+    if not after.isdecimal() or len(after) > 9:
+        return JsonResponse({'error': 'bad request'}, status=400)
+    page_number = _to_int(request.GET.get('page'), 1) or 1
+
+    batch = list(
+        posts.filter(pk__gt=int(after))
+        .select_related('author', 'reply_to__author')
+        .order_by('pk')[:UPDATES_BATCH + 1]
+    )
+    has_more = len(batch) > UPDATES_BATCH
+    batch = batch[:UPDATES_BATCH]
+    if not batch:
+        return JsonResponse({'count': 0})
+
+    html = render_to_string(
+        'forum/_posts_fragment.html',
+        {'posts': batch, 'page': SimpleNamespace(number=page_number)},
+        request=request,
+    )
+    return JsonResponse({
+        'html': html,
+        'count': len(batch),
+        'last_id': batch[-1].pk,
+        'has_more': has_more,
+    })
+
+
+@require_GET
+@never_cache
+def game_chat_updates(request, game_pk):
+    game = get_object_or_404(Game, pk=game_pk)
+    return _updates_response(request, game.chat_posts.all())
+
+
+@require_GET
+@never_cache
+def topic_updates(request, pk):
+    topic = get_object_or_404(Topic, pk=pk)
+    return _updates_response(request, topic.posts.all())

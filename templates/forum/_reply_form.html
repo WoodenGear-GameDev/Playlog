@@ -1,21 +1,82 @@
-<section id="reply-form">
-    <h2>{{ form_title|default:"Ваш ответ" }}</h2>
+<section id="reply-form" class="border border-paper-300 dark:border-carbon-800 bg-paper-100 dark:bg-carbon-900">
+
+    <!-- Шапка формы -->
+    <div class="px-6 py-4 border-b border-paper-300 dark:border-carbon-800 bg-paper-50 dark:bg-carbon-950/60 flex items-center justify-between">
+        <div>
+            <p class="font-mono text-[10px] uppercase tracking-widest text-signal-600 dark:text-signal-400">
+                [COMPOSE // MESSAGE]
+            </p>
+            <h2 class="text-base sm:text-lg font-bold font-mono uppercase tracking-wider text-zinc-950 dark:text-white mt-0.5">
+                {{ form_title|default:"Ваш ответ" }}
+            </h2>
+        </div>
+        <span class="w-2 h-2 bg-signal-500"></span>
+    </div>
+
     {% if user.is_authenticated %}
-    <form method="post">
+    <form method="post" class="p-6 space-y-5">
         {% csrf_token %}
+
         {% if reply_target %}
-        <blockquote>
-            В ответ на {{ reply_target.author.username }}:
-            {{ reply_target.body|truncatechars:100 }}
-            <a href="?page={{ page.number }}#reply-form">Отменить ответ</a>
+        <blockquote class="border-l-2 border-signal-500 bg-paper-50 dark:bg-carbon-950 p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 font-mono text-xs">
+            <div class="text-zinc-600 dark:text-zinc-400 min-w-0">
+                <span class="text-zinc-500">В ответ на</span>
+                <strong class="text-signal-600 dark:text-signal-400">@{{ reply_target.author.username }}</strong>:
+                <span class="text-zinc-700 dark:text-zinc-300">{{ reply_target.body|truncatechars:100 }}</span>
+            </div>
+            <a href="?page={{ page.number }}#reply-form"
+               class="px-2 py-1 border border-paper-300 dark:border-carbon-800 hover:border-red-500 text-zinc-500 hover:text-red-500 uppercase font-bold text-[10px] flex-shrink-0 transition-colors">
+                ОТМЕНИТЬ ОТВЕТ ✕
+            </a>
         </blockquote>
         <input type="hidden" name="reply_to" value="{{ reply_target.pk }}">
         {% endif %}
-        {{ form.as_p }}
-        <button type="submit">Отправить</button>
+
+        {% if form.non_field_errors %}
+        <div class="p-3 border border-red-500 bg-red-500/10 text-xs font-mono text-red-700 dark:text-red-300 space-y-1">
+            {% for error in form.non_field_errors %}
+                <p>{{ error }}</p>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
+
+        {% for field in form.visible_fields %}
+        <div class="space-y-1.5">
+            <label for="{{ field.id_for_label }}" class="block font-mono text-xs font-semibold uppercase tracking-wider text-zinc-700 dark:text-zinc-300">
+                {{ field.label }}
+            </label>
+
+            <div class="[&_textarea]:w-full [&_textarea]:min-h-[110px] [&_textarea]:p-3 [&_textarea]:text-sm [&_textarea]:font-sans [&_textarea]:border [&_textarea]:border-paper-300 dark:[&_textarea]:border-carbon-800 [&_textarea]:bg-paper-50 dark:[&_textarea]:bg-carbon-950 [&_textarea]:text-zinc-900 dark:[&_textarea]:text-zinc-100 focus:[&_textarea]:outline-none focus:[&_textarea]:border-signal-500
+                        [&_input]:w-full [&_input]:px-3 [&_input]:py-2.5 [&_input]:text-sm [&_input]:font-mono [&_input]:border [&_input]:border-paper-300 dark:[&_input]:border-carbon-800 [&_input]:bg-paper-50 dark:[&_input]:bg-carbon-950 [&_input]:text-zinc-900 dark:[&_input]:text-zinc-100 focus:[&_input]:outline-none focus:[&_input]:border-signal-500">
+                {{ field }}
+            </div>
+
+            {% if field.errors %}
+            <div class="text-xs font-mono text-red-600 dark:text-red-400 space-y-0.5">
+                {% for error in field.errors %}
+                    <p>→ {{ error }}</p>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+
+        <div class="flex justify-end">
+            <button type="submit"
+                    class="px-5 py-2.5 text-xs font-mono font-bold uppercase tracking-wider bg-signal-500 hover:bg-signal-400 text-carbon-950 border border-signal-500 transition-colors">
+                ОТПРАВИТЬ →
+            </button>
+        </div>
     </form>
     {% else %}
-    <p><a href="{% url 'login' %}?next={{ request.get_full_path|urlencode }}">Войдите</a>,
-        чтобы {{ login_hint|default:"ответить" }}.</p>
+    <div class="p-6 font-mono text-xs sm:text-sm text-zinc-600 dark:text-zinc-400">
+        <a href="{% url 'login' %}?next={{ request.get_full_path|urlencode }}"
+           class="font-bold text-signal-600 dark:text-signal-400 hover:underline">
+            Войдите
+        </a>, чтобы {{ login_hint|default:"ответить" }}.
+    </div>
     {% endif %}
+
 </section>
