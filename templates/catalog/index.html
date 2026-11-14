@@ -1,13 +1,13 @@
 {% extends 'base.html' %}
 
-{% block title %}Каталог игр | Playlog{% endblock %}
+{% block title %}Каталог игр // PLAYLOG{% endblock %}
 
 {% block content %}
-<div class="space-y-8">
+<div class="space-y-10">
 
     <!-- Заголовок каталога -->
-    <div class="border-b border-slate-200 dark:border-slate-800 pb-4">
-        <h1 class="text-2xl font-bold font-mono tracking-tight text-slate-900 dark:text-white uppercase">
+    <div class="border-b border-paper-300 dark:border-carbon-800 pb-4">
+        <h1 class="text-2xl sm:text-3xl font-bold font-mono tracking-tight text-zinc-950 dark:text-white uppercase">
             Каталог игр
         </h1>
     </div>
@@ -16,120 +16,145 @@
     {% for category in categories %}
         {% if category.games.all %}
         <section class="category-row">
-            <!-- Шапка жанра со стрелками прокрутки -->
-            <div class="flex items-center justify-between mb-3">
-                <div class="flex items-center gap-2">
-                    <span class="w-2 h-2 rounded-sm bg-emerald-500"></span>
-                    <h2 class="text-base sm:text-lg font-bold font-mono uppercase tracking-wider text-slate-900 dark:text-slate-100">
+            <!-- Шапка категории -->
+            <div class="flex items-center justify-between mb-3 pb-2 border-b border-paper-300/60 dark:border-carbon-800/70">
+                <div class="flex items-center gap-2.5">
+                    <span class="font-mono text-xs px-1.5 py-0.5 bg-signal-500/15 border border-signal-500/40 text-signal-600 dark:text-signal-400 font-bold">
+                        #{{ forloop.counter|stringformat:"02d" }}
+                    </span>
+                    <h2 class="text-sm sm:text-base font-bold font-mono uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
                         {{ category.name }}
                     </h2>
+                    <span class="font-mono text-xs text-zinc-400 dark:text-zinc-500">
+                        [{{ category.games.all|length }}]
+                    </span>
                 </div>
 
-                <!-- Кнопки горизонтальной прокрутки ленты -->
+                <!-- Кнопки прокрутки ленты -->
                 <div class="flex items-center gap-1">
-                    <button type="button" 
-                            onclick="scrollStrip('strip-{{ category.pk }}', -1)" 
-                            class="w-7 h-7 rounded border border-slate-200 dark:border-slate-800 hover:border-emerald-500 text-slate-600 dark:text-slate-400 hover:text-emerald-500 dark:hover:text-emerald-400 bg-white dark:bg-[#101726] flex items-center justify-center transition-colors font-mono font-bold text-sm shadow-sm"
+                    <button type="button"
+                            onclick="scrollStrip('strip-{{ category.pk }}', -1)"
+                            class="w-7 h-7 border border-paper-300 dark:border-carbon-800 hover:border-signal-500 dark:hover:border-signal-500 bg-paper-100 dark:bg-carbon-900 text-zinc-600 dark:text-zinc-400 hover:text-signal-600 dark:hover:text-signal-400 flex items-center justify-center transition-colors font-mono text-xs font-bold"
                             aria-label="Влево">
-                        ‹
+                        &lt;
                     </button>
-                    <button type="button" 
-                            onclick="scrollStrip('strip-{{ category.pk }}', 1)" 
-                            class="w-7 h-7 rounded border border-slate-200 dark:border-slate-800 hover:border-emerald-500 text-slate-600 dark:text-slate-400 hover:text-emerald-500 dark:hover:text-emerald-400 bg-white dark:bg-[#101726] flex items-center justify-center transition-colors font-mono font-bold text-sm shadow-sm"
+                    <button type="button"
+                            onclick="scrollStrip('strip-{{ category.pk }}', 1)"
+                            class="w-7 h-7 border border-paper-300 dark:border-carbon-800 hover:border-signal-500 dark:hover:border-signal-500 bg-paper-100 dark:bg-carbon-900 text-zinc-600 dark:text-zinc-400 hover:text-signal-600 dark:hover:text-signal-400 flex items-center justify-center transition-colors font-mono text-xs font-bold"
                             aria-label="Вправо">
-                        ›
+                        &gt;
                     </button>
                 </div>
             </div>
 
-            <!-- Горизонтальная лента карточек игр -->
-            <div id="strip-{{ category.pk }}" 
+            <!-- Горизонтальная лента карточек -->
+            <div id="strip-{{ category.pk }}"
                  class="game-strip flex gap-4 overflow-x-auto scroll-smooth pb-3 pt-1 snap-x snap-mandatory">
                 {% for game in category.games.all %}
-                <div class="group relative flex flex-col w-56 sm:w-64 flex-shrink-0 snap-start rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#101726] hover:border-emerald-500 dark:hover:border-emerald-500 transition-all duration-200 overflow-hidden shadow-sm">
-                    
-                    <!-- Обложка игры -->
-                    <div class="relative w-full aspect-[16/9] bg-slate-900 overflow-hidden">
+                <article class="group flex flex-col w-60 sm:w-64 flex-shrink-0 snap-start border border-paper-300 dark:border-carbon-800 bg-paper-100 dark:bg-carbon-900 hover:border-signal-500 dark:hover:border-signal-500 transition-colors">
+
+                    <!-- Обложка 16:9 -->
+                    <div class="relative w-full aspect-[16/9] border-b border-paper-300 dark:border-carbon-800 bg-paper-200 dark:bg-carbon-950 overflow-hidden">
                         {% if game.header_image %}
-                            <img src="{{ game.header_image }}" 
-                                 alt="{{ game.title }}" 
-                                 loading="lazy" 
+                            <img src="{{ game.header_image }}"
+                                 alt="{{ game.title }}"
+                                 loading="lazy"
                                  class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
                         {% else %}
-                            <div class="w-full h-full flex items-center justify-center bg-slate-800 text-slate-500 font-mono text-xs">
+                            <div class="w-full h-full no-cover-grid flex items-center justify-center text-zinc-400 dark:text-zinc-600 font-mono text-xs">
                                 НЕТ ОБЛОЖКИ
                             </div>
                         {% endif %}
                     </div>
 
-                    <!-- Описание и кнопка открытия -->
-                    <div class="p-3 flex flex-col flex-grow justify-between gap-3">
-                        <h3 class="font-bold text-sm text-slate-900 dark:text-slate-100 line-clamp-1 group-hover:text-emerald-500 transition-colors" title="{{ game.title }}">
+                    <!-- Контент карточки -->
+                    <div class="p-3.5 flex flex-col flex-grow justify-between gap-4">
+                        <h3 class="font-bold text-sm text-zinc-900 dark:text-zinc-100 line-clamp-1 group-hover:text-signal-600 dark:group-hover:text-signal-400 transition-colors" title="{{ game.title }}">
                             {{ game.title|default:game }}
                         </h3>
 
-                        <div class="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end">
-                            <a href="{% url 'game_detail' game.pk %}" 
-                               class="inline-flex items-center gap-1 px-3 py-1 text-xs font-mono font-bold rounded bg-emerald-500 hover:bg-emerald-400 text-slate-950 transition-colors shadow-sm">
+                        <div class="pt-2.5 border-t border-paper-300 dark:border-carbon-800 flex items-center justify-end">
+                            <a href="{% url 'game_detail' game.pk %}"
+                               class="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-mono font-bold border border-signal-500 bg-signal-500/10 text-signal-600 dark:text-signal-400 group-hover:bg-signal-500 group-hover:text-carbon-950 transition-colors">
                                 <span>ОТКРЫТЬ</span>
                                 <span>→</span>
                             </a>
                         </div>
                     </div>
 
-                </div>
+                </article>
                 {% endfor %}
             </div>
         </section>
         {% endif %}
     {% endfor %}
 
-    <!-- Без категории -->
+    <!-- Игры без категории -->
     {% if uncategorized %}
     <section class="category-row">
-        <div class="flex items-center justify-between mb-3">
-            <div class="flex items-center gap-2">
-                <span class="w-2 h-2 rounded-sm bg-slate-500"></span>
-                <h2 class="text-base sm:text-lg font-bold font-mono uppercase tracking-wider text-slate-900 dark:text-slate-100">
+        <div class="flex items-center justify-between mb-3 pb-2 border-b border-paper-300/60 dark:border-carbon-800/70">
+            <div class="flex items-center gap-2.5">
+                <span class="font-mono text-xs px-1.5 py-0.5 bg-zinc-500/15 border border-zinc-500/40 text-zinc-600 dark:text-zinc-400 font-bold">
+                    #00
+                </span>
+                <h2 class="text-sm sm:text-base font-bold font-mono uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
                     Без категории
                 </h2>
+                <span class="font-mono text-xs text-zinc-400 dark:text-zinc-500">
+                    [{{ uncategorized|length }}]
+                </span>
             </div>
             <div class="flex items-center gap-1">
-                <button type="button" onclick="scrollStrip('strip-uncategorized', -1)" class="w-7 h-7 rounded border border-slate-200 dark:border-slate-800 hover:border-emerald-500 text-slate-600 dark:text-slate-400 hover:text-emerald-500 dark:hover:text-emerald-400 bg-white dark:bg-[#101726] flex items-center justify-center font-mono font-bold text-sm">‹</button>
-                <button type="button" onclick="scrollStrip('strip-uncategorized', 1)" class="w-7 h-7 rounded border border-slate-200 dark:border-slate-800 hover:border-emerald-500 text-slate-600 dark:text-slate-400 hover:text-emerald-500 dark:hover:text-emerald-400 bg-white dark:bg-[#101726] flex items-center justify-center font-mono font-bold text-sm">›</button>
+                <button type="button"
+                        onclick="scrollStrip('strip-uncategorized', -1)"
+                        class="w-7 h-7 border border-paper-300 dark:border-carbon-800 hover:border-signal-500 dark:hover:border-signal-500 bg-paper-100 dark:bg-carbon-900 text-zinc-600 dark:text-zinc-400 hover:text-signal-600 dark:hover:text-signal-400 flex items-center justify-center font-mono text-xs font-bold">
+                    &lt;
+                </button>
+                <button type="button"
+                        onclick="scrollStrip('strip-uncategorized', 1)"
+                        class="w-7 h-7 border border-paper-300 dark:border-carbon-800 hover:border-signal-500 dark:hover:border-signal-500 bg-paper-100 dark:bg-carbon-900 text-zinc-600 dark:text-zinc-400 hover:text-signal-600 dark:hover:text-signal-400 flex items-center justify-center font-mono text-xs font-bold">
+                    &gt;
+                </button>
             </div>
         </div>
 
         <div id="strip-uncategorized" class="game-strip flex gap-4 overflow-x-auto scroll-smooth pb-3 pt-1 snap-x snap-mandatory">
             {% for game in uncategorized %}
-            <div class="group relative flex flex-col w-56 sm:w-64 flex-shrink-0 snap-start rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#101726] hover:border-emerald-500 dark:hover:border-emerald-500 transition-all duration-200 overflow-hidden shadow-sm">
-                <div class="relative w-full aspect-[16/9] bg-slate-900 overflow-hidden">
+            <article class="group flex flex-col w-60 sm:w-64 flex-shrink-0 snap-start border border-paper-300 dark:border-carbon-800 bg-paper-100 dark:bg-carbon-900 hover:border-signal-500 dark:hover:border-signal-500 transition-colors">
+                <div class="relative w-full aspect-[16/9] border-b border-paper-300 dark:border-carbon-800 bg-paper-200 dark:bg-carbon-950 overflow-hidden">
                     {% if game.header_image %}
                         <img src="{{ game.header_image }}" alt="{{ game.title }}" loading="lazy" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
                     {% else %}
-                        <div class="w-full h-full flex items-center justify-center bg-slate-800 text-slate-500 font-mono text-xs">НЕТ ОБЛОЖКИ</div>
+                        <div class="w-full h-full no-cover-grid flex items-center justify-center text-zinc-400 dark:text-zinc-600 font-mono text-xs">
+                            НЕТ ОБЛОЖКИ
+                        </div>
                     {% endif %}
                 </div>
-                <div class="p-3 flex flex-col flex-grow justify-between gap-3">
-                    <h3 class="font-bold text-sm text-slate-900 dark:text-slate-100 line-clamp-1 group-hover:text-emerald-500 transition-colors">
+
+                <div class="p-3.5 flex flex-col flex-grow justify-between gap-4">
+                    <h3 class="font-bold text-sm text-zinc-900 dark:text-zinc-100 line-clamp-1 group-hover:text-signal-600 dark:group-hover:text-signal-400 transition-colors">
                         {{ game.title|default:game }}
                     </h3>
-                    <div class="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end">
-                        <a href="{% url 'game_detail' game.pk %}" class="inline-flex items-center gap-1 px-3 py-1 text-xs font-mono font-bold rounded bg-emerald-500 hover:bg-emerald-400 text-slate-950 transition-colors shadow-sm">
+
+                    <div class="pt-2.5 border-t border-paper-300 dark:border-carbon-800 flex items-center justify-end">
+                        <a href="{% url 'game_detail' game.pk %}"
+                           class="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-mono font-bold border border-signal-500 bg-signal-500/10 text-signal-600 dark:text-signal-400 group-hover:bg-signal-500 group-hover:text-carbon-950 transition-colors">
                             <span>ОТКРЫТЬ</span>
                             <span>→</span>
                         </a>
                     </div>
                 </div>
-            </div>
+            </article>
             {% endfor %}
         </div>
     </section>
     {% endif %}
 
-    <!-- Если в базе еще нет игр -->
+    <!-- Пустое состояние -->
     {% if not categories and not uncategorized %}
-    <p class="font-mono text-sm text-slate-500 dark:text-slate-400">Игр пока нет. Добавьте их через админку.</p>
+    <div class="border border-paper-300 dark:border-carbon-800 bg-paper-100 dark:bg-carbon-900 p-8 text-center font-mono">
+        <p class="text-sm text-zinc-600 dark:text-zinc-400">Игр в каталоге пока нет. Добавьте записи через панель администратора.</p>
+    </div>
     {% endif %}
 
 </div>
