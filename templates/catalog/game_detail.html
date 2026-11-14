@@ -150,7 +150,7 @@
                     {% endif %}
                 </div>
 
-                <!-- Форма оценки звёздами для авторизованных -->
+                <!-- Форма оценки и отзыва для авторизованных -->
                 {% if user.is_authenticated %}
                     <div class="space-y-4 pt-1">
                         <form id="rate-game-form" method="post" action="{% url 'rate_game' game.pk %}" class="space-y-4">
@@ -162,29 +162,27 @@
                             </div>
                             {% endif %}
 
-                            {% for hidden in rating_form.hidden_fields %}{{ hidden }}{% endfor %}
-
-                            {% for field in rating_form.visible_fields %}
+                            <!-- Оценка звёздами -->
                             <div class="space-y-2">
                                 <div class="flex items-center justify-between font-mono text-xs">
                                     <label class="font-semibold uppercase tracking-wider text-zinc-700 dark:text-zinc-300">
-                                        {{ field.label }}
+                                        {{ rating_form.value.label }}
                                     </label>
                                     <span id="star-rating-readout" class="font-bold text-signal-600 dark:text-signal-400">
-                                        {% if field.value %}{{ field.value }} / 10{% else %}— / 10{% endif %}
+                                        {% if rating_form.value.value %}{{ rating_form.value.value }} / 10{% else %}— / 10{% endif %}
                                     </span>
                                 </div>
 
                                 <!-- Скрытый инпут, который отправит значение в Django -->
                                 <input type="hidden"
-                                       name="{{ field.html_name }}"
-                                       id="{{ field.id_for_label }}"
-                                       value="{{ field.value|default:'' }}">
+                                       name="value"
+                                       id="rating-value-input"
+                                       value="{{ rating_form.value.value|default:'' }}">
 
                                 <!-- Виджет 10 звёзд -->
                                 <div id="star-picker-box"
                                      class="p-3 border border-paper-300 dark:border-carbon-800 bg-paper-50 dark:bg-carbon-950 flex items-center justify-between gap-1 transition-colors">
-                                    <div id="star-buttons" class="flex items-center gap-0.5 sm:gap-1" role="radiogroup" aria-label="{{ field.label }}">
+                                    <div id="star-buttons" class="flex items-center gap-0.5 sm:gap-1" role="radiogroup" aria-label="{{ rating_form.value.label }}">
                                         {% for i in "1234567890" %}
                                         <button type="button"
                                                 data-star-value="{{ forloop.counter }}"
@@ -201,14 +199,20 @@
                                 <p id="star-picker-error" class="hidden text-xs font-mono text-red-600 dark:text-red-400">
                                     → Выберите количество звёзд (от 1 до 10)
                                 </p>
-
-                                {% if field.errors %}
-                                <div class="text-xs font-mono text-red-600 dark:text-red-400">
-                                    {% for error in field.errors %}<p>→ {{ error }}</p>{% endfor %}
-                                </div>
-                                {% endif %}
                             </div>
-                            {% endfor %}
+
+                            <!-- Текст отзыва (необязательно) -->
+                            <div class="space-y-1.5">
+                                <label for="{{ rating_form.text.id_for_label }}" class="block font-mono text-xs font-semibold uppercase tracking-wider text-zinc-700 dark:text-zinc-300">
+                                    {{ rating_form.text.label }}
+                                </label>
+                                <div class="[&_textarea]:w-full [&_textarea]:min-h-[110px] [&_textarea]:p-3 [&_textarea]:text-sm [&_textarea]:font-sans [&_textarea]:border [&_textarea]:border-paper-300 dark:[&_textarea]:border-carbon-800 [&_textarea]:bg-paper-50 dark:[&_textarea]:bg-carbon-950 [&_textarea]:text-zinc-900 dark:[&_textarea]:text-zinc-100 focus:[&_textarea]:outline-none focus:[&_textarea]:border-signal-500">
+                                    {{ rating_form.text }}
+                                </div>
+                                <p class="font-mono text-[11px] text-zinc-500 dark:text-zinc-400">
+                                    Если изменить текст, голоса «полезно» под прежним отзывом сбрасываются.
+                                </p>
+                            </div>
                         </form>
 
                         <!-- Кнопки отправки и удаления оценки -->
@@ -224,7 +228,7 @@
                                 {% csrf_token %}
                                 <button type="submit"
                                         class="px-4 py-2.5 text-xs font-mono font-semibold uppercase tracking-wider border border-paper-300 dark:border-carbon-800 hover:border-red-500 dark:hover:border-red-500 bg-paper-50 dark:bg-carbon-950 text-zinc-600 dark:text-zinc-400 hover:text-red-600 dark:hover:text-red-400 transition-colors">
-                                    УДАЛИТЬ МОЮ ОЦЕНКУ
+                                    УДАЛИТЬ ОЦЕНКУ{% if user_rating.text %} И ОТЗЫВ{% endif %}
                                 </button>
                             </form>
                             {% endif %}
@@ -296,6 +300,152 @@
 
     </div>
 
+    <!-- Отзывы игроков -->
+    <section id="reviews" class="border border-paper-300 dark:border-carbon-800 bg-paper-100 dark:bg-carbon-900">
+
+        <!-- Шапка секции -->
+        <div class="px-6 py-4 border-b border-paper-300 dark:border-carbon-800 bg-paper-50 dark:bg-carbon-950/60 flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center gap-2.5">
+                <span class="font-mono text-xs px-1.5 py-0.5 bg-signal-500/15 border border-signal-500/40 text-signal-600 dark:text-signal-400 font-bold">
+                    #03
+                </span>
+                <h2 class="text-sm sm:text-base font-bold font-mono uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
+                    Отзывы игроков
+                </h2>
+                {% if reviews_page.paginator.count %}
+                <span class="font-mono text-xs text-zinc-500 dark:text-zinc-400">
+                    [{{ reviews_page.paginator.count }}]
+                </span>
+                {% endif %}
+            </div>
+
+            <!-- Сортировка -->
+            {% if reviews_page.paginator.count > 1 %}
+            <nav class="flex flex-wrap items-center gap-2 font-mono text-[11px]" aria-label="Сортировка отзывов">
+                <span class="text-zinc-500 uppercase tracking-wider">СОРТИРОВКА:</span>
+                {% for key, label in sort_options %}
+                <a href="?sort={{ key }}#reviews"
+                   {% if key == sort %}aria-current="true"{% endif %}
+                   class="px-2.5 py-1 font-bold uppercase border transition-colors {% if key == sort %}border-signal-500 bg-signal-500 text-carbon-950{% else %}border-paper-300 dark:border-carbon-800 hover:border-signal-500 bg-paper-100 dark:bg-carbon-900 text-zinc-600 dark:text-zinc-400 hover:text-signal-600 dark:hover:text-signal-400{% endif %}">
+                    {{ label }}
+                </a>
+                {% endfor %}
+            </nav>
+            {% endif %}
+        </div>
+
+        <!-- Список отзывов -->
+        <div class="p-6 space-y-4">
+            {% for review in reviews %}
+            <article id="review-{{ review.pk }}"
+                     class="review border {% if review.is_mine %}border-signal-500/60 dark:border-signal-500/50 bg-signal-500/[0.04] dark:bg-signal-500/[0.06]{% else %}border-paper-300 dark:border-carbon-800 bg-paper-50 dark:bg-carbon-950{% endif %}">
+
+                <!-- Шапка отзыва -->
+                <div class="px-4 py-2.5 border-b {% if review.is_mine %}border-signal-500/30 bg-signal-500/10{% else %}border-paper-300 dark:border-carbon-800 bg-paper-100 dark:bg-carbon-900{% endif %} flex flex-wrap items-center justify-between gap-2 font-mono text-xs">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <span class="w-1.5 h-1.5 bg-signal-500"></span>
+                        <strong class="text-zinc-900 dark:text-zinc-100">{% if review.user_id %}@{% endif %}{{ review.author_name }}</strong>
+                        {% if review.is_mine %}
+                        <span class="px-1.5 py-0.5 text-[10px] font-bold bg-signal-500/20 border border-signal-500/50 text-signal-700 dark:text-signal-400">
+                            ВЫ
+                        </span>
+                        {% endif %}
+                        <span class="text-zinc-400 dark:text-zinc-600">·</span>
+                        <span class="text-zinc-500 dark:text-zinc-400">{{ review.created_at|date:"d.m.Y H:i" }}</span>
+                    </div>
+
+                    <span class="px-2 py-0.5 font-bold border border-signal-500/50 bg-signal-500/10 text-signal-600 dark:text-signal-400">
+                        {{ review.value }} / 10
+                    </span>
+                </div>
+
+                <!-- Текст и голоса -->
+                <div class="p-4 space-y-3">
+                    <div class="text-sm text-zinc-800 dark:text-zinc-200 leading-relaxed [&_p]:mb-2 last:[&_p]:mb-0">
+                        {{ review.text|linebreaks }}
+                    </div>
+
+                    <div class="pt-3 border-t border-paper-300/70 dark:border-carbon-800/80 flex flex-wrap items-center gap-3 font-mono text-xs">
+                        {% if user.is_authenticated and not review.is_mine %}
+                        <form method="post" action="{% url 'vote_review' game.pk review.pk %}" class="inline-flex flex-wrap items-center gap-2">
+                            {% csrf_token %}
+                            <input type="hidden" name="sort" value="{{ sort }}">
+                            <input type="hidden" name="page" value="{{ reviews_page.number }}">
+                            <span class="text-zinc-500 uppercase tracking-wider">Отзыв полезен?</span>
+                            <button type="submit" name="vote" value="up"
+                                    aria-pressed="{% if review.my_vote == 'up' %}true{% else %}false{% endif %}"
+                                    class="px-2.5 py-1 font-bold uppercase border transition-colors {% if review.my_vote == 'up' %}border-signal-500 bg-signal-500 text-carbon-950{% else %}border-paper-300 dark:border-carbon-800 hover:border-signal-500 bg-paper-100 dark:bg-carbon-900 text-zinc-600 dark:text-zinc-400 hover:text-signal-600 dark:hover:text-signal-400{% endif %}">
+                                ПОЛЕЗНО · {{ review.helpful_count }}
+                            </button>
+                            <button type="submit" name="vote" value="down"
+                                    aria-pressed="{% if review.my_vote == 'down' %}true{% else %}false{% endif %}"
+                                    class="px-2.5 py-1 font-bold uppercase border transition-colors {% if review.my_vote == 'down' %}border-red-500 bg-red-500 text-white{% else %}border-paper-300 dark:border-carbon-800 hover:border-red-500 bg-paper-100 dark:bg-carbon-900 text-zinc-600 dark:text-zinc-400 hover:text-red-600 dark:hover:text-red-400{% endif %}">
+                                БЕСПОЛЕЗНО · {{ review.unhelpful_count }}
+                            </button>
+                        </form>
+                        {% else %}
+                        <span class="px-2.5 py-1 border border-paper-300 dark:border-carbon-800 text-zinc-600 dark:text-zinc-400">
+                            ПОЛЕЗНО · <strong>{{ review.helpful_count }}</strong>
+                        </span>
+                        <span class="px-2.5 py-1 border border-paper-300 dark:border-carbon-800 text-zinc-600 dark:text-zinc-400">
+                            БЕСПОЛЕЗНО · <strong>{{ review.unhelpful_count }}</strong>
+                        </span>
+                        {% if not user.is_authenticated %}
+                        <a href="{% url 'login' %}?next={{ request.get_full_path|urlencode }}"
+                           class="font-bold text-signal-600 dark:text-signal-400 hover:underline">
+                            Войдите, чтобы оценить отзыв
+                        </a>
+                        {% endif %}
+                        {% endif %}
+                    </div>
+                </div>
+            </article>
+            {% empty %}
+            <div class="border border-paper-300 dark:border-carbon-800 bg-paper-50 dark:bg-carbon-950 p-8 text-center font-mono space-y-2">
+                <p class="text-xs uppercase tracking-widest text-zinc-400 dark:text-zinc-500">[NO_REVIEWS]</p>
+                <p class="text-sm text-zinc-600 dark:text-zinc-400">Отзывов пока нет. Напишите первый в блоке оценки выше.</p>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Пагинация отзывов -->
+        {% if reviews_page.has_other_pages %}
+        <div class="px-6 pb-6">
+            <div class="pt-4 flex flex-wrap items-center justify-between gap-3 border-t border-paper-300 dark:border-carbon-800 font-mono text-xs">
+                <div>
+                    {% if reviews_page.has_previous %}
+                        <a href="?sort={{ sort }}&amp;page={{ reviews_page.previous_page_number }}#reviews"
+                           class="inline-block px-3 py-1.5 font-bold border border-signal-500 bg-signal-500/10 hover:bg-signal-500 text-signal-600 dark:text-signal-400 hover:text-carbon-950 dark:hover:text-carbon-950 transition-colors">
+                            ← НАЗАД
+                        </a>
+                    {% else %}
+                        <span class="inline-block px-3 py-1.5 border border-paper-300 dark:border-carbon-800 text-zinc-400 dark:text-zinc-600 cursor-not-allowed">
+                            ← НАЗАД
+                        </span>
+                    {% endif %}
+                </div>
+
+                <span class="text-zinc-600 dark:text-zinc-400">
+                    СТРАНИЦА <strong class="text-zinc-950 dark:text-white">{{ reviews_page.number }}</strong> ИЗ <strong class="text-zinc-950 dark:text-white">{{ reviews_page.paginator.num_pages }}</strong>
+                </span>
+
+                <div>
+                    {% if reviews_page.has_next %}
+                        <a href="?sort={{ sort }}&amp;page={{ reviews_page.next_page_number }}#reviews"
+                           class="inline-block px-3 py-1.5 font-bold border border-signal-500 bg-signal-500/10 hover:bg-signal-500 text-signal-600 dark:text-signal-400 hover:text-carbon-950 dark:hover:text-carbon-950 transition-colors">
+                            ВПЕРЁД →
+                        </a>
+                    {% else %}
+                        <span class="inline-block px-3 py-1.5 border border-paper-300 dark:border-carbon-800 text-zinc-400 dark:text-zinc-600 cursor-not-allowed">
+                            ВПЕРЁД →
+                        </span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </section>
+
 </div>
 
 <script>
@@ -317,7 +467,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const starContainer = document.getElementById('star-buttons');
     if (!form || !starContainer) return;
 
-    const hiddenInput = form.querySelector('input[type="hidden"]:not([name="csrfmiddlewaretoken"])');
+    const hiddenInput = document.getElementById('rating-value-input');
     const buttons = Array.from(starContainer.querySelectorAll('.star-btn'));
     const readout = document.getElementById('star-rating-readout');
     const pickerBox = document.getElementById('star-picker-box');
