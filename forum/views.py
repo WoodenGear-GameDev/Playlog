@@ -30,9 +30,9 @@ TOPIC_SORTS = {
     'popular': ('-posts_count', '-last_activity', '-pk'),
 }
 TOPIC_SORT_LABELS = [
+    ('popular', 'Популярные'),
     ('new', 'Недавно'),
     ('old', 'Давно'),
-    ('popular', 'Популярные'),
 ]
 
 
