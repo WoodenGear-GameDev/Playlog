@@ -1,36 +1,86 @@
-<article id="post-{{ post.pk }}" class="post{% if post.is_deleted %} post-deleted{% endif %}">
-    <p>
-        <strong>{{ post.author.username }}</strong> · {{ post.created_at|date:"d.m.Y H:i" }}
-        {% if post.edited_at and not post.is_deleted %} · <em>изменено</em>{% endif %}
-    </p>
-    {% if post.is_deleted %}
-    <p><em>Сообщение удалено.</em></p>
-    {% else %}
-        {% if post.reply_to %}
-        <blockquote>
-            {% if post.reply_to.is_deleted %}
-            <em>Сообщение удалено.</em>
-            {% else %}
-            <a href="{% url 'post_permalink' post.reply_to.pk %}">{{ post.reply_to.author.username }}</a>:
-            {{ post.reply_to.body|truncatechars:100 }}
+<article id="post-{{ post.pk }}"
+         class="post{% if post.is_deleted %} post-deleted opacity-70 border-paper-300 dark:border-carbon-800 bg-paper-100 dark:bg-carbon-900{% elif user.is_authenticated and post.author_id == user.pk %} border-signal-500/60 dark:border-signal-500/50 bg-signal-500/[0.04] dark:bg-signal-500/[0.06]{% else %} border-paper-300 dark:border-carbon-800 bg-paper-100 dark:bg-carbon-900{% endif %} border">
+
+    <!-- Шапка сообщения -->
+    <div class="px-4 py-2.5 border-b {% if not post.is_deleted and user.is_authenticated and post.author_id == user.pk %}border-signal-500/30 bg-signal-500/10{% else %}border-paper-300 dark:border-carbon-800 bg-paper-50 dark:bg-carbon-950/60{% endif %} flex flex-wrap items-center justify-between gap-2 font-mono text-xs">
+        <div class="flex items-center gap-2">
+            <span class="w-1.5 h-1.5 {% if post.is_deleted %}bg-zinc-500{% else %}bg-signal-500{% endif %}"></span>
+            <strong class="text-zinc-900 dark:text-zinc-100">@{{ post.author.username }}</strong>
+            {% if not post.is_deleted and user.is_authenticated and post.author_id == user.pk %}
+                <span class="px-1.5 py-0.5 text-[10px] font-bold bg-signal-500/20 border border-signal-500/50 text-signal-700 dark:text-signal-400">
+                    ВЫ
+                </span>
             {% endif %}
-        </blockquote>
+            <span class="text-zinc-400 dark:text-zinc-600">·</span>
+            <span class="text-zinc-500 dark:text-zinc-400">{{ post.created_at|date:"d.m.Y H:i" }}</span>
+            {% if post.edited_at and not post.is_deleted %}
+                <span class="px-1.5 py-0.5 text-[10px] border border-paper-300 dark:border-carbon-800 text-zinc-500 dark:text-zinc-400">
+                    ИЗМЕНЕНО
+                </span>
+            {% endif %}
+        </div>
+
+        {% if page %}
+        <a href="{% url 'post_permalink' post.pk %}"
+           class="text-[11px] text-zinc-400 dark:text-zinc-500 hover:text-signal-600 dark:hover:text-signal-400 transition-colors"
+           title="Прямая ссылка на сообщение">
+            #{{ page.start_index|add:forloop.counter0 }}
+        </a>
         {% endif %}
-        {{ post.body|linebreaks }}
-        {% if user.is_authenticated %}
-        <p>
-            <a href="?page={{ page.number }}&amp;reply={{ post.pk }}#reply-form">Ответить</a>
-            {% if post.author_id == user.pk %}
-            · <a href="{% url 'post_edit' post.pk %}">Изменить</a>
+    </div>
+
+    <!-- Содержимое -->
+    <div class="p-4 space-y-3">
+        {% if post.is_deleted %}
+            <p class="font-mono text-xs italic text-zinc-500 dark:text-zinc-500">
+                [Сообщение удалено.]
+            </p>
+        {% else %}
+            {% if post.reply_to %}
+            <blockquote class="border-l-2 border-signal-500 bg-paper-50 dark:bg-carbon-950 px-3 py-2 font-mono text-xs text-zinc-600 dark:text-zinc-400">
+                {% if post.reply_to.is_deleted %}
+                    <em class="text-zinc-500">Сообщение удалено.</em>
+                {% else %}
+                    <a href="{% url 'post_permalink' post.reply_to.pk %}"
+                       class="font-bold text-signal-600 dark:text-signal-400 hover:underline">
+                        @{{ post.reply_to.author.username }}
+                    </a>:
+                    <span class="text-zinc-600 dark:text-zinc-400">{{ post.reply_to.body|truncatechars:100 }}</span>
+                {% endif %}
+            </blockquote>
             {% endif %}
-            {% if post.author_id == user.pk or user.is_staff %}
-            <form method="post" action="{% url 'post_delete' post.pk %}" style="display:inline"
-                  onsubmit="return confirm('Удалить сообщение?');">
-                {% csrf_token %}
-                <button type="submit">Удалить</button>
-            </form>
+
+            <div class="text-sm text-zinc-800 dark:text-zinc-200 leading-relaxed [&_p]:mb-2 last:[&_p]:mb-0">
+                {{ post.body|linebreaks }}
+            </div>
+
+            {% if user.is_authenticated %}
+            <div class="pt-3 border-t {% if user.is_authenticated and post.author_id == user.pk %}border-signal-500/25{% else %}border-paper-300/70 dark:border-carbon-800/80{% endif %} flex flex-wrap items-center gap-2 font-mono text-xs">
+                <a href="?page={{ page.number }}&amp;reply={{ post.pk }}#reply-form"
+                   class="px-2.5 py-1 font-bold uppercase border border-signal-500/50 bg-signal-500/10 hover:bg-signal-500 text-signal-600 dark:text-signal-400 hover:text-carbon-950 dark:hover:text-carbon-950 transition-colors">
+                    ОТВЕТИТЬ
+                </a>
+
+                {% if post.author_id == user.pk %}
+                <a href="{% url 'post_edit' post.pk %}"
+                   class="px-2.5 py-1 font-semibold uppercase border border-paper-300 dark:border-carbon-800 hover:border-signal-500 bg-paper-50 dark:bg-carbon-950 text-zinc-600 dark:text-zinc-400 hover:text-signal-600 dark:hover:text-signal-400 transition-colors">
+                    ИЗМЕНИТЬ
+                </a>
+                {% endif %}
+
+                {% if post.author_id == user.pk or user.is_staff %}
+                <form method="post" action="{% url 'post_delete' post.pk %}" class="inline"
+                      onsubmit="return confirm('Удалить сообщение?');">
+                    {% csrf_token %}
+                    <button type="submit"
+                            class="px-2.5 py-1 font-semibold uppercase border border-paper-300 dark:border-carbon-800 hover:border-red-500 dark:hover:border-red-500 bg-paper-50 dark:bg-carbon-950 text-zinc-600 dark:text-zinc-400 hover:text-red-600 dark:hover:text-red-400 transition-colors">
+                        УДАЛИТЬ
+                    </button>
+                </form>
+                {% endif %}
+            </div>
             {% endif %}
-        </p>
         {% endif %}
-    {% endif %}
+    </div>
+
 </article>
