@@ -1,0 +1,60 @@
+<script>
+(function () {
+    var list = document.getElementById('posts-list');
+    if (!list || list.dataset.live !== '1') return;
+
+    var url = list.dataset.updatesUrl;
+    var pageNumber = list.dataset.page || '1';
+    var lastId = parseInt(list.dataset.lastId, 10) || 0;
+    var baseTitle = document.title;
+    var unread = 0;
+    var errors = 0;
+    var busy = false;
+    var timer = null;
+
+    async function poll() {
+        if (busy) return;
+        busy = true;
+        var next = document.hidden ? 30000 : 5000;
+        try {
+            var query = '?after=' + lastId + '&page=' + encodeURIComponent(pageNumber);
+            var response = await fetch(url + query, {
+                credentials: 'same-origin',
+                cache: 'no-store',
+                headers: {'X-Requested-With': 'XMLHttpRequest'}
+            });
+            if (!response.ok) throw new Error('HTTP ' + response.status);
+            var data = await response.json();
+            if (data.count > 0) {
+                var note = document.getElementById('empty-note');
+                if (note) note.remove();
+                list.insertAdjacentHTML('beforeend', data.html);
+                lastId = data.last_id;
+                if (document.hidden) {
+                    unread += data.count;
+                    document.title = '(' + unread + ') ' + baseTitle;
+                }
+                if (data.has_more) next = 300;
+            }
+            errors = 0;
+        } catch (e) {
+            errors += 1;
+            next = Math.min(60000, 5000 * Math.pow(2, errors));
+        } finally {
+            busy = false;
+            timer = setTimeout(poll, next);
+        }
+    }
+
+    document.addEventListener('visibilitychange', function () {
+        if (!document.hidden) {
+            unread = 0;
+            document.title = baseTitle;
+            clearTimeout(timer);
+            poll();
+        }
+    });
+
+    timer = setTimeout(poll, 5000);
+})();
+</script>

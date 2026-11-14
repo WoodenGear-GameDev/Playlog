@@ -1,40 +1,173 @@
 {% extends 'base.html' %}
 
-{% block title %}Каталог | Playlog{% endblock %}
+{% block title %}{% if q %}Поиск: {{ q }} // {% endif %}Каталог игр // PLAYLOG{% endblock %}
 
 {% block content %}
-<h1>Каталог игр</h1>
+<div class="space-y-10">
 
-{% for category in categories %}
-    {% if category.games.all %}
-    <section class="category-row">
-        <h2>{{ category.name }}</h2>
-        <div class="game-strip" style="display:flex; gap:1rem; overflow-x:auto;">
-            {% for game in category.games.all %}
-            <a class="game-card" href="{% url 'game_detail' game.pk %}" style="flex:0 0 auto;">
-                {% if game.header_image %}
-                <img src="{{ game.header_image }}" alt="" width="200"><br>
-                {% endif %}
-                {{ game }}
+    <!-- Заголовок каталога + поиск -->
+    <div class="border-b border-paper-300 dark:border-carbon-800 pb-4 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+        <h1 class="text-2xl sm:text-3xl font-bold font-mono tracking-tight text-zinc-950 dark:text-white uppercase">
+            Каталог игр
+        </h1>
+
+        <form method="get" action="{% url 'home' %}" role="search" class="flex w-full sm:w-auto items-stretch gap-2">
+            <input type="search"
+                   name="q"
+                   value="{{ q }}"
+                   maxlength="100"
+                   placeholder="ПОИСК ПО НАЗВАНИЮ..."
+                   class="w-full sm:w-72 px-3 py-2 text-xs font-mono bg-paper-100 dark:bg-carbon-900 border border-paper-300 dark:border-carbon-800 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-600 focus:outline-none focus:border-signal-500 dark:focus:border-signal-500 transition-colors">
+            <button type="submit"
+                    class="px-4 py-2 text-xs font-mono font-bold border border-signal-500 bg-signal-500 hover:bg-signal-400 text-carbon-950 transition-colors">
+                НАЙТИ
+            </button>
+            {% if q %}
+            <a href="{% url 'home' %}"
+               class="flex items-center px-3 py-2 text-xs font-mono font-semibold border border-paper-300 dark:border-carbon-800 hover:border-red-500 dark:hover:border-red-500 text-zinc-600 dark:text-zinc-400 hover:text-red-600 dark:hover:text-red-400 transition-colors">
+                СБРОС
             </a>
+            {% endif %}
+        </form>
+    </div>
+
+    {% if q %}
+
+    <!-- Результаты поиска -->
+    <section>
+        <p class="font-mono text-xs text-zinc-500 dark:text-zinc-400 mb-4">
+            ПО ЗАПРОСУ «{{ q }}» НАЙДЕНО:
+            <span class="font-bold text-signal-600 dark:text-signal-400">{{ page.paginator.count }}</span>
+        </p>
+
+        {% if results %}
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {% for game in results %}
+                {% include 'catalog/_game_card.html' with card_class='w-full' %}
+            {% endfor %}
+        </div>
+
+        {% if page.has_other_pages %}
+        <nav class="mt-8 pt-4 border-t border-paper-300 dark:border-carbon-800 flex items-center justify-between font-mono text-xs" aria-label="Страницы результатов">
+            {% if page.has_previous %}
+            <a href="?q={{ q|urlencode }}&amp;page={{ page.previous_page_number }}"
+               class="px-3 py-1.5 font-semibold border border-paper-300 dark:border-carbon-800 hover:border-signal-500 text-zinc-700 dark:text-zinc-300 hover:text-signal-600 dark:hover:text-signal-400 transition-colors">
+                ← НАЗАД
+            </a>
+            {% else %}<span></span>{% endif %}
+
+            <span class="text-zinc-500 dark:text-zinc-400">СТРАНИЦА {{ page.number }} / {{ page.paginator.num_pages }}</span>
+
+            {% if page.has_next %}
+            <a href="?q={{ q|urlencode }}&amp;page={{ page.next_page_number }}"
+               class="px-3 py-1.5 font-semibold border border-paper-300 dark:border-carbon-800 hover:border-signal-500 text-zinc-700 dark:text-zinc-300 hover:text-signal-600 dark:hover:text-signal-400 transition-colors">
+                ВПЕРЁД →
+            </a>
+            {% else %}<span></span>{% endif %}
+        </nav>
+        {% endif %}
+
+        {% else %}
+        <div class="border border-paper-300 dark:border-carbon-800 bg-paper-100 dark:bg-carbon-900 p-8 text-center font-mono space-y-3">
+            <p class="text-sm text-zinc-600 dark:text-zinc-400">По запросу «{{ q }}» ничего не найдено.</p>
+            <a href="{% url 'home' %}" class="inline-block text-xs font-bold text-signal-600 dark:text-signal-400 hover:underline">СБРОСИТЬ ПОИСК</a>
+        </div>
+        {% endif %}
+    </section>
+
+    {% else %}
+
+    <!-- Категории / Жанры -->
+    {% for category in categories %}
+        {% if category.games.all %}
+        <section class="category-row">
+            <!-- Шапка категории -->
+            <div class="flex items-center justify-between mb-3 pb-2 border-b border-paper-300/60 dark:border-carbon-800/70">
+                <div class="flex items-center gap-2.5">
+                    <span class="font-mono text-xs px-1.5 py-0.5 bg-signal-500/15 border border-signal-500/40 text-signal-600 dark:text-signal-400 font-bold">
+                        #{{ forloop.counter|stringformat:"02d" }}
+                    </span>
+                    <h2 class="text-sm sm:text-base font-bold font-mono uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
+                        {{ category.name }}
+                    </h2>
+                    <span class="font-mono text-xs text-zinc-400 dark:text-zinc-500">
+                        [{{ category.games.all|length }}]
+                    </span>
+                </div>
+
+                <!-- Кнопки прокрутки ленты -->
+                <div class="flex items-center gap-1">
+                    <button type="button"
+                            onclick="scrollStrip('strip-{{ category.pk }}', -1)"
+                            class="w-7 h-7 border border-paper-300 dark:border-carbon-800 hover:border-signal-500 dark:hover:border-signal-500 bg-paper-100 dark:bg-carbon-900 text-zinc-600 dark:text-zinc-400 hover:text-signal-600 dark:hover:text-signal-400 flex items-center justify-center transition-colors font-mono text-xs font-bold"
+                            aria-label="Влево">
+                        &lt;
+                    </button>
+                    <button type="button"
+                            onclick="scrollStrip('strip-{{ category.pk }}', 1)"
+                            class="w-7 h-7 border border-paper-300 dark:border-carbon-800 hover:border-signal-500 dark:hover:border-signal-500 bg-paper-100 dark:bg-carbon-900 text-zinc-600 dark:text-zinc-400 hover:text-signal-600 dark:hover:text-signal-400 flex items-center justify-center transition-colors font-mono text-xs font-bold"
+                            aria-label="Вправо">
+                        &gt;
+                    </button>
+                </div>
+            </div>
+
+            <!-- Горизонтальная лента карточек -->
+            <div id="strip-{{ category.pk }}"
+                 class="game-strip flex gap-4 overflow-x-auto scroll-smooth pb-3 pt-1 snap-x snap-mandatory">
+                {% for game in category.games.all %}
+                    {% include 'catalog/_game_card.html' with card_class='w-60 sm:w-64 flex-shrink-0 snap-start' %}
+                {% endfor %}
+            </div>
+        </section>
+        {% endif %}
+    {% endfor %}
+
+    <!-- Игры без категории -->
+    {% if uncategorized %}
+    <section class="category-row">
+        <div class="flex items-center justify-between mb-3 pb-2 border-b border-paper-300/60 dark:border-carbon-800/70">
+            <div class="flex items-center gap-2.5">
+                <span class="font-mono text-xs px-1.5 py-0.5 bg-zinc-500/15 border border-zinc-500/40 text-zinc-600 dark:text-zinc-400 font-bold">
+                    #00
+                </span>
+                <h2 class="text-sm sm:text-base font-bold font-mono uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
+                    Без категории
+                </h2>
+                <span class="font-mono text-xs text-zinc-400 dark:text-zinc-500">
+                    [{{ uncategorized|length }}]
+                </span>
+            </div>
+            <div class="flex items-center gap-1">
+                <button type="button"
+                        onclick="scrollStrip('strip-uncategorized', -1)"
+                        class="w-7 h-7 border border-paper-300 dark:border-carbon-800 hover:border-signal-500 dark:hover:border-signal-500 bg-paper-100 dark:bg-carbon-900 text-zinc-600 dark:text-zinc-400 hover:text-signal-600 dark:hover:text-signal-400 flex items-center justify-center font-mono text-xs font-bold">
+                    &lt;
+                </button>
+                <button type="button"
+                        onclick="scrollStrip('strip-uncategorized', 1)"
+                        class="w-7 h-7 border border-paper-300 dark:border-carbon-800 hover:border-signal-500 dark:hover:border-signal-500 bg-paper-100 dark:bg-carbon-900 text-zinc-600 dark:text-zinc-400 hover:text-signal-600 dark:hover:text-signal-400 flex items-center justify-center font-mono text-xs font-bold">
+                    &gt;
+                </button>
+            </div>
+        </div>
+
+        <div id="strip-uncategorized" class="game-strip flex gap-4 overflow-x-auto scroll-smooth pb-3 pt-1 snap-x snap-mandatory">
+            {% for game in uncategorized %}
+                {% include 'catalog/_game_card.html' with card_class='w-60 sm:w-64 flex-shrink-0 snap-start' %}
             {% endfor %}
         </div>
     </section>
     {% endif %}
-{% endfor %}
 
-{% if uncategorized %}
-<section class="category-row">
-    <h2>Без категории</h2>
-    <div class="game-strip" style="display:flex; gap:1rem; overflow-x:auto;">
-        {% for game in uncategorized %}
-        <a class="game-card" href="{% url 'game_detail' game.pk %}" style="flex:0 0 auto;">{{ game }}</a>
-        {% endfor %}
+    <!-- Пустое состояние -->
+    {% if not categories and not uncategorized %}
+    <div class="border border-paper-300 dark:border-carbon-800 bg-paper-100 dark:bg-carbon-900 p-8 text-center font-mono">
+        <p class="text-sm text-zinc-600 dark:text-zinc-400">Игр в каталоге пока нет. Добавьте записи через панель администратора.</p>
     </div>
-</section>
-{% endif %}
+    {% endif %}
 
-{% if not categories and not uncategorized %}
-<p>Игр пока нет. Добавьте их через админку.</p>
-{% endif %}
+    {% endif %}
+
+</div>
 {% endblock %}

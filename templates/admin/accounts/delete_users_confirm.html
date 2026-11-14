@@ -1,0 +1,45 @@
+{% extends "admin/base_site.html" %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+    <a href="{% url 'admin:index' %}">Главная</a> &rsaquo;
+    <a href="{% url 'admin:auth_user_changelist' %}">Пользователи</a> &rsaquo;
+    Удаление
+</div>
+{% endblock %}
+
+{% block content %}
+<p>Будут удалены учётные записи:</p>
+<ul>
+    {% for item in items %}
+    <li><strong>{{ item.user.username }}</strong>:
+        сообщений {{ item.posts }}, тем {{ item.topics }}, оценок {{ item.ratings }}</li>
+    {% endfor %}
+</ul>
+<p>Профиль, библиотека игр и аватар удаляются в любом случае. Действие необратимо.</p>
+
+<form method="post">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="delete_with_options">
+    <input type="hidden" name="confirm" value="1">
+    <input type="hidden" name="select_across" value="0">
+    {% for item in items %}
+    <input type="hidden" name="_selected_action" value="{{ item.user.pk }}">
+    {% endfor %}
+
+    <p><label>
+        <input type="radio" name="mode" value="keep" checked>
+        <strong>Оставить действия.</strong> Сообщения, темы и оценки остаются,
+        автор показывается как «Удалённый пользователь».
+    </label></p>
+    <p><label>
+        <input type="radio" name="mode" value="purge">
+        <strong>Удалить и действия.</strong> Сообщения станут «удалено», оценки
+        будут стёрты, темы без чужих ответов удалятся, остальные темы
+        останутся с пометкой «Тема удалена».
+    </label></p>
+
+    <input type="submit" value="Да, удалить безвозвратно">
+    <a href="{% url 'admin:auth_user_changelist' %}" class="button cancel-link">Отмена</a>
+</form>
+{% endblock %}

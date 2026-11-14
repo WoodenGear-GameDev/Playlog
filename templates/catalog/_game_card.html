@@ -1,0 +1,32 @@
+<article class="group flex flex-col {{ card_class }} border border-paper-300 dark:border-carbon-800 bg-paper-100 dark:bg-carbon-900 hover:border-signal-500 dark:hover:border-signal-500 transition-colors">
+
+    <!-- Обложка 16:9 -->
+    <div class="relative w-full aspect-[16/9] border-b border-paper-300 dark:border-carbon-800 bg-paper-200 dark:bg-carbon-950 overflow-hidden">
+        {% if game.header_image %}
+            <img src="{{ game.header_image }}"
+                 alt="{{ game.title|default:game }}"
+                 loading="lazy"
+                 class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+        {% else %}
+            <div class="w-full h-full no-cover-grid flex items-center justify-center text-zinc-400 dark:text-zinc-600 font-mono text-xs">
+                НЕТ ОБЛОЖКИ
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Контент карточки -->
+    <div class="p-3.5 flex flex-col flex-grow justify-between gap-4">
+        <h3 class="font-bold text-sm text-zinc-900 dark:text-zinc-100 line-clamp-1 group-hover:text-signal-600 dark:group-hover:text-signal-400 transition-colors" title="{{ game.title|default:game }}">
+            {{ game.title|default:game }}
+        </h3>
+
+        <div class="pt-2.5 border-t border-paper-300 dark:border-carbon-800 flex items-center justify-end">
+            <a href="{% url 'game_detail' game.pk %}"
+               class="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-mono font-bold border border-signal-500 bg-signal-500/10 text-signal-600 dark:text-signal-400 group-hover:bg-signal-500 group-hover:text-carbon-950 transition-colors">
+                <span>ОТКРЫТЬ</span>
+                <span>→</span>
+            </a>
+        </div>
+    </div>
+
+</article>

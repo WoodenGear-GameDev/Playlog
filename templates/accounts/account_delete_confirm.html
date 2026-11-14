@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+
+{% block title %}Подтверждение удаления // PLAYLOG{% endblock %}
+
+{% block content %}
+<div class="max-w-lg mx-auto my-4 sm:my-10">
+    <div class="border border-red-500/60 bg-paper-100 dark:bg-carbon-900">
+
+        <div class="px-6 py-4 border-b border-paper-300 dark:border-carbon-800 bg-red-500/10 flex items-center justify-between">
+            <div>
+                <p class="font-mono text-[10px] uppercase tracking-widest text-red-600 dark:text-red-400">
+                    [ACCOUNT // CONFIRM_DELETE]
+                </p>
+                <h1 class="text-xl font-bold font-mono uppercase tracking-tight text-zinc-950 dark:text-white mt-0.5">
+                    Удалить аккаунт навсегда?
+                </h1>
+            </div>
+            <span class="px-2 py-0.5 font-mono text-[10px] font-bold bg-red-500 text-white">DEL</span>
+        </div>
+
+        <div class="p-6 space-y-5">
+            <div class="p-4 border border-paper-300 dark:border-carbon-800 bg-paper-50 dark:bg-carbon-950 space-y-2 font-mono text-xs sm:text-sm text-zinc-700 dark:text-zinc-300">
+                <p>Аккаунт: <strong class="text-zinc-950 dark:text-white">@{{ user.username }}</strong></p>
+                <p class="text-xs text-zinc-600 dark:text-zinc-400">
+                    {% if mode == 'purge' %}
+                    Будут удалены ваш аккаунт и все ваши действия: сообщений {{ summary.posts }}, тем {{ summary.topics }}, оценок {{ summary.ratings }}.
+                    {% else %}
+                    Будет удалён аккаунт. Сообщения ({{ summary.posts }}), темы ({{ summary.topics }}) и оценки ({{ summary.ratings }}) останутся от имени «Удалённый пользователь».
+                    {% endif %}
+                </p>
+                <p class="text-xs text-red-600 dark:text-red-400">Это действие нельзя отменить.</p>
+            </div>
+
+            <form method="post" class="flex flex-col-reverse sm:flex-row items-center justify-end gap-3 pt-1">
+                {% csrf_token %}
+                <a href="{% url 'profile' %}"
+                   class="w-full sm:w-auto text-center px-4 py-2.5 text-xs font-mono font-semibold uppercase tracking-wider border border-paper-300 dark:border-carbon-800 hover:border-zinc-500 bg-paper-50 dark:bg-carbon-950 text-zinc-700 dark:text-zinc-300 transition-colors">
+                    ОТМЕНА
+                </a>
+                <button type="submit"
+                        class="w-full sm:w-auto px-5 py-2.5 text-xs font-mono font-bold uppercase tracking-wider bg-red-500 hover:bg-red-600 text-white border border-red-500 transition-colors">
+                    ДА, УДАЛИТЬ АККАУНТ
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

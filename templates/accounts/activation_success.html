@@ -1,9 +1,38 @@
 {% extends 'base.html' %}
 
-{% block title %}Почта подтверждена | Playlog{% endblock %}
+{% block title %}Почта подтверждена // PLAYLOG{% endblock %}
 
 {% block content %}
-<h1>Почта подтверждена</h1>
-<p>Теперь вы можете <a href="{% url 'login' %}?next={% url 'profile' %}">войти</a>.
-После входа вы попадёте в профиль, где можно привязать Steam (это необязательно).</p>
+<div class="max-w-md mx-auto my-4 sm:my-10">
+    <div class="border border-paper-300 dark:border-carbon-800 bg-paper-100 dark:bg-carbon-900">
+
+        <!-- Шапка -->
+        <div class="px-6 py-4 border-b border-paper-300 dark:border-carbon-800 bg-paper-50 dark:bg-carbon-950/60 flex items-center justify-between">
+            <div>
+                <p class="font-mono text-[10px] uppercase tracking-widest text-signal-600 dark:text-signal-400">
+                    [AUTH // ACCOUNT_VERIFIED]
+                </p>
+                <h1 class="text-xl font-bold font-mono uppercase tracking-tight text-zinc-950 dark:text-white mt-0.5">
+                    Почта подтверждена
+                </h1>
+            </div>
+            <span class="px-2 py-0.5 font-mono text-[10px] font-bold bg-signal-500 text-carbon-950">
+                OK
+            </span>
+        </div>
+
+        <!-- Сообщение и кнопка входа -->
+        <div class="p-6 space-y-5">
+            <p class="font-mono text-xs sm:text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed">
+                Теперь вы можете войти в аккаунт. После входа вы попадёте в профиль, где можно привязать Steam (это необязательно).
+            </p>
+
+            <a href="{% url 'login' %}?next={% url 'profile' %}"
+               class="block w-full text-center py-2.5 px-4 text-xs font-mono font-bold uppercase tracking-wider bg-signal-500 hover:bg-signal-400 text-carbon-950 border border-signal-500 transition-colors">
+                ВОЙТИ В ПРОФИЛЬ →
+            </a>
+        </div>
+
+    </div>
+</div>
 {% endblock %}

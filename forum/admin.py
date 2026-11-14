@@ -6,7 +6,7 @@ from .models import Post, Topic
 @admin.register(Topic)
 class TopicAdmin(admin.ModelAdmin):
     list_display = ('title', 'game', 'author', 'created_at', 'last_activity')
-    list_filter = ('game',)
+    list_filter = ('game', 'is_deleted')
     search_fields = ('title', 'author__username')
 
 

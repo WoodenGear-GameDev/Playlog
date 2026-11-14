@@ -77,3 +77,29 @@ class AvatarForm(forms.ModelForm):
         if commit and self._old_avatar and self._old_avatar != new_name:
             default_storage.delete(self._old_avatar)
         return profile
+
+class DeleteAccountForm(forms.Form):
+    password = forms.CharField(
+        label='Текущий пароль',
+        widget=forms.PasswordInput(attrs={'autocomplete': 'current-password'}),
+    )
+    mode = forms.ChoiceField(
+        label='Что сделать с вашими сообщениями, темами и оценками',
+        choices=[('keep', 'Оставить'), ('purge', 'Удалить')],
+        widget=forms.RadioSelect,
+        initial='keep',
+    )
+    confirm = forms.BooleanField(
+        label='Я понимаю, что удаление необратимо',
+        error_messages={'required': 'Подтвердите, что понимаете последствия.'},
+    )
+
+    def __init__(self, user, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.user = user
+
+    def clean_password(self):
+        password = self.cleaned_data['password']
+        if not self.user.check_password(password):
+            raise forms.ValidationError('Неверный пароль.')
+        return password

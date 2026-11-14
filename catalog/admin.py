@@ -1,6 +1,6 @@
 from django.contrib import admin, messages
 
-from .models import Category, Game, Rating
+from .models import Category, Game, Rating, ReviewVote
 from .sync import sync_game
 
 
@@ -37,6 +37,18 @@ class GameAdmin(admin.ModelAdmin):
 
 @admin.register(Rating)
 class RatingAdmin(admin.ModelAdmin):
-    list_display = ('game', 'user', 'value', 'updated_at')
+    list_display = ('game', 'author_name', 'value', 'has_review', 'updated_at')
     list_filter = ('value',)
-    search_fields = ('game__title', 'user__username')
+    search_fields = ('game__title', 'user__username', 'text')
+    raw_id_fields = ('user', 'game')
+
+    @admin.display(boolean=True, description='Отзыв')
+    def has_review(self, obj):
+        return bool(obj.text)
+
+
+@admin.register(ReviewVote)
+class ReviewVoteAdmin(admin.ModelAdmin):
+    list_display = ('rating', 'user', 'is_helpful', 'created_at')
+    list_filter = ('is_helpful',)
+    raw_id_fields = ('rating', 'user')
