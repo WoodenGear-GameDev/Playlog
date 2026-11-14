@@ -1,39 +1,386 @@
 {% extends 'base.html' %}
 
-{% block title %}{{ game }} | Playlog{% endblock %}
+{% block title %}{{ game }} // PLAYLOG{% endblock %}
 
 {% block content %}
-<h1>{{ game }}</h1>
-{% if game.header_image %}<img src="{{ game.header_image }}" alt="" width="400">{% endif %}
-<p>Категории:
-    {% for category in game.categories.all %}{{ category.name }}{% if not forloop.last %}, {% endif %}{% empty %}не указаны{% endfor %}
-</p>
-<p>Дата выхода: {{ game.release_date|default:"не указана" }}</p>
-<p>{{ game.description|default:"Описания пока нет." }}</p>
-<h2>Оценка</h2>
-{% if stats.count %}
-<p>Средняя оценка: <strong>{{ stats.average|floatformat:1 }}</strong> из 10
-    (оценок: {{ stats.count }})</p>
-{% else %}
-<p>Оценок пока нет.</p>
-{% endif %}
+<div class="space-y-8">
 
-{% if user.is_authenticated %}
-<form method="post" action="{% url 'rate_game' game.pk %}">
-    {% csrf_token %}
-    {{ rating_form.as_p }}
-    <button type="submit">{% if user_rating %}Изменить оценку{% else %}Оценить{% endif %}</button>
-</form>
-{% if user_rating %}
-<form method="post" action="{% url 'delete_rating' game.pk %}">
-    {% csrf_token %}
-    <button type="submit">Удалить мою оценку</button>
-</form>
-{% endif %}
-{% else %}
-<p><a href="{% url 'login' %}?next={{ request.path }}">Войдите</a>, чтобы поставить оценку.</p>
-{% endif %}
-<p><a href="{% url 'game_chat' game.pk %}">Общий чат игры</a></p>
-<p><a href="{% url 'topic_list' game.pk %}">Форум игры (тем: {{ game.topics.count }})</a></p>
-<p><a href="{% url 'home' %}">← Назад в каталог</a></p>
+    <!-- Верхняя навигация -->
+    <div class="flex items-center justify-between border-b border-paper-300 dark:border-carbon-800 pb-4">
+        <a href="{% url 'home' %}"
+           class="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-mono font-bold uppercase tracking-wider border border-paper-300 dark:border-carbon-800 hover:border-signal-500 dark:hover:border-signal-500 bg-paper-100 dark:bg-carbon-900 text-zinc-700 dark:text-zinc-300 hover:text-signal-600 dark:hover:text-signal-400 transition-colors">
+            <span>←</span>
+            <span>НАЗАД В КАТАЛОГ</span>
+        </a>
+
+        <span class="font-mono text-[11px] uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
+            [CATALOG // ENTRY_{{ game.pk }}]
+        </span>
+    </div>
+
+    <!-- Главная карточка игры: Обложка + Описание -->
+    <section class="border border-paper-300 dark:border-carbon-800 bg-paper-100 dark:bg-carbon-900">
+        <div class="grid grid-cols-1 lg:grid-cols-12">
+
+            <!-- Левая колонка: Обложка и метаданные -->
+            <div class="lg:col-span-5 border-b lg:border-b-0 lg:border-r border-paper-300 dark:border-carbon-800 flex flex-col justify-between bg-paper-50/50 dark:bg-carbon-950/40">
+                <div class="relative w-full aspect-[16/9] border-b border-paper-300 dark:border-carbon-800 bg-paper-200 dark:bg-carbon-950 overflow-hidden">
+                    {% if game.header_image %}
+                        <img src="{{ game.header_image }}"
+                             alt="{{ game }}"
+                             class="w-full h-full object-cover">
+                    {% else %}
+                        <div class="w-full h-full no-cover-grid flex items-center justify-center text-zinc-400 dark:text-zinc-600 font-mono text-xs">
+                            НЕТ ОБЛОЖКИ
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- Таблица метаданных -->
+                <div class="p-5 space-y-4 font-mono text-xs flex-grow flex flex-col justify-center">
+                    <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-2 pb-3 border-b border-paper-300 dark:border-carbon-800">
+                        <span class="text-zinc-500 uppercase tracking-wider flex-shrink-0">КАТЕГОРИИ:</span>
+                        <div class="flex flex-wrap sm:justify-end gap-1.5">
+                            {% for category in game.categories.all %}
+                                <span class="px-2 py-0.5 bg-signal-500/10 border border-signal-500/40 text-signal-600 dark:text-signal-400 font-bold uppercase text-[11px]">
+                                    {{ category.name }}
+                                </span>
+                            {% empty %}
+                                <span class="text-zinc-500 dark:text-zinc-500">не указаны</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-between gap-2">
+                        <span class="text-zinc-500 uppercase tracking-wider">ДАТА ВЫХОДА:</span>
+                        <span class="font-bold text-zinc-900 dark:text-zinc-100">
+                            {{ game.release_date|default:"не указана" }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Правая колонка: Название и описание -->
+            <div class="lg:col-span-7 p-6 sm:p-8 flex flex-col justify-between space-y-6">
+                <div class="space-y-4">
+                    <div class="flex items-center gap-2">
+                        <span class="w-2 h-2 bg-signal-500"></span>
+                        <span class="font-mono text-[10px] uppercase tracking-widest text-signal-600 dark:text-signal-400">
+                            GAME_DOSSIER
+                        </span>
+                    </div>
+
+                    <h1 class="text-2xl sm:text-3xl font-bold font-mono tracking-tight text-zinc-950 dark:text-white">
+                        {{ game }}
+                    </h1>
+
+                    <div class="pt-4 border-t border-paper-300 dark:border-carbon-800">
+                        <p class="text-sm sm:text-base text-zinc-700 dark:text-zinc-300 leading-relaxed whitespace-pre-line">
+                            {{ game.description|default:"Описания пока нет." }}
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+    <!-- Нижняя сетка: Оценки + Сообщество (Чат и Форум) -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- Модуль 1: Оценка игры -->
+        <section class="lg:col-span-6 border border-paper-300 dark:border-carbon-800 bg-paper-100 dark:bg-carbon-900 flex flex-col justify-between">
+            <div class="p-6 space-y-5">
+                <!-- Заголовок модуля -->
+                <div class="flex items-center justify-between border-b border-paper-300 dark:border-carbon-800 pb-3">
+                    <div class="flex items-center gap-2.5">
+                        <span class="font-mono text-xs px-1.5 py-0.5 bg-signal-500/15 border border-signal-500/40 text-signal-600 dark:text-signal-400 font-bold">
+                            #01
+                        </span>
+                        <h2 class="text-sm sm:text-base font-bold font-mono uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
+                            Оценка игроков
+                        </h2>
+                    </div>
+                </div>
+
+                <!-- Блок среднего рейтинга со звёздами -->
+                <div class="p-4 border border-paper-300 dark:border-carbon-800 bg-paper-50 dark:bg-carbon-950 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    {% if stats.count %}
+                        <div class="space-y-2">
+                            <p class="font-mono text-[10px] uppercase tracking-widest text-zinc-500">
+                                СРЕДНИЙ БАЛЛ
+                            </p>
+                            <div class="flex items-baseline gap-1.5 font-mono">
+                                <span class="text-3xl font-black text-signal-600 dark:text-signal-400">
+                                    {{ stats.average|floatformat:1 }}
+                                </span>
+                                <span class="text-sm text-zinc-500">/ 10</span>
+                            </div>
+
+                            <!-- Визуальная шкала из 10 звёзд -->
+                            <div class="relative inline-block" data-avg-rating="{{ stats.average|stringformat:'f' }}">
+                                <!-- Фоновые пустые звёзды -->
+                                <div class="flex items-center gap-0.5 text-zinc-300 dark:text-zinc-700">
+                                    {% for _ in "1234567890" %}
+                                    <svg class="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                                    </svg>
+                                    {% endfor %}
+                                </div>
+                                <!-- Заполненные зелёные звёзды -->
+                                <div id="avg-stars-fill" class="absolute inset-y-0 left-0 overflow-hidden flex items-center gap-0.5 text-signal-500" style="width: 0%;">
+                                    {% for _ in "1234567890" %}
+                                    <svg class="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                                    </svg>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="sm:text-right font-mono">
+                            <span class="inline-block px-2.5 py-1 border border-paper-300 dark:border-carbon-800 bg-paper-100 dark:bg-carbon-900 text-xs text-zinc-700 dark:text-zinc-300">
+                                ОЦЕНОК: <strong>{{ stats.count }}</strong>
+                            </span>
+                        </div>
+                    {% else %}
+                        <p class="font-mono text-xs sm:text-sm text-zinc-500 dark:text-zinc-400">
+                            Оценок пока нет. Станьте первым.
+                        </p>
+                    {% endif %}
+                </div>
+
+                <!-- Форма оценки звёздами для авторизованных -->
+                {% if user.is_authenticated %}
+                    <div class="space-y-4 pt-1">
+                        <form id="rate-game-form" method="post" action="{% url 'rate_game' game.pk %}" class="space-y-4">
+                            {% csrf_token %}
+
+                            {% if rating_form.non_field_errors %}
+                            <div class="p-3 border border-red-500 bg-red-500/10 text-xs font-mono text-red-700 dark:text-red-300">
+                                {% for error in rating_form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+                            </div>
+                            {% endif %}
+
+                            {% for hidden in rating_form.hidden_fields %}{{ hidden }}{% endfor %}
+
+                            {% for field in rating_form.visible_fields %}
+                            <div class="space-y-2">
+                                <div class="flex items-center justify-between font-mono text-xs">
+                                    <label class="font-semibold uppercase tracking-wider text-zinc-700 dark:text-zinc-300">
+                                        {{ field.label }}
+                                    </label>
+                                    <span id="star-rating-readout" class="font-bold text-signal-600 dark:text-signal-400">
+                                        {% if field.value %}{{ field.value }} / 10{% else %}— / 10{% endif %}
+                                    </span>
+                                </div>
+
+                                <!-- Скрытый инпут, который отправит значение в Django -->
+                                <input type="hidden"
+                                       name="{{ field.html_name }}"
+                                       id="{{ field.id_for_label }}"
+                                       value="{{ field.value|default:'' }}">
+
+                                <!-- Виджет 10 звёзд -->
+                                <div id="star-picker-box"
+                                     class="p-3 border border-paper-300 dark:border-carbon-800 bg-paper-50 dark:bg-carbon-950 flex items-center justify-between gap-1 transition-colors">
+                                    <div id="star-buttons" class="flex items-center gap-0.5 sm:gap-1" role="radiogroup" aria-label="{{ field.label }}">
+                                        {% for i in "1234567890" %}
+                                        <button type="button"
+                                                data-star-value="{{ forloop.counter }}"
+                                                class="star-btn p-0.5 text-zinc-300 dark:text-zinc-700 hover:scale-110 transition-transform focus:outline-none"
+                                                title="Оценка {{ forloop.counter }} из 10">
+                                            <svg class="w-5 h-5 sm:w-6 sm:h-6" viewBox="0 0 24 24" fill="currentColor">
+                                                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                                            </svg>
+                                        </button>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+
+                                <p id="star-picker-error" class="hidden text-xs font-mono text-red-600 dark:text-red-400">
+                                    → Выберите количество звёзд (от 1 до 10)
+                                </p>
+
+                                {% if field.errors %}
+                                <div class="text-xs font-mono text-red-600 dark:text-red-400">
+                                    {% for error in field.errors %}<p>→ {{ error }}</p>{% endfor %}
+                                </div>
+                                {% endif %}
+                            </div>
+                            {% endfor %}
+                        </form>
+
+                        <!-- Кнопки отправки и удаления оценки -->
+                        <div class="flex flex-wrap items-center gap-3 pt-1">
+                            <button type="submit"
+                                    form="rate-game-form"
+                                    class="px-5 py-2.5 text-xs font-mono font-bold uppercase tracking-wider bg-signal-500 hover:bg-signal-400 text-carbon-950 border border-signal-500 transition-colors">
+                                {% if user_rating %}ИЗМЕНИТЬ ОЦЕНКУ{% else %}ОЦЕНИТЬ{% endif %} →
+                            </button>
+
+                            {% if user_rating %}
+                            <form method="post" action="{% url 'delete_rating' game.pk %}" class="inline">
+                                {% csrf_token %}
+                                <button type="submit"
+                                        class="px-4 py-2.5 text-xs font-mono font-semibold uppercase tracking-wider border border-paper-300 dark:border-carbon-800 hover:border-red-500 dark:hover:border-red-500 bg-paper-50 dark:bg-carbon-950 text-zinc-600 dark:text-zinc-400 hover:text-red-600 dark:hover:text-red-400 transition-colors">
+                                    УДАЛИТЬ МОЮ ОЦЕНКУ
+                                </button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% else %}
+                    <div class="p-4 border border-paper-300 dark:border-carbon-800 bg-paper-50 dark:bg-carbon-950 font-mono text-xs text-zinc-600 dark:text-zinc-400">
+                        <a href="{% url 'login' %}?next={{ request.path }}"
+                           class="font-bold text-signal-600 dark:text-signal-400 hover:underline">
+                            Войдите
+                        </a>, чтобы поставить оценку.
+                    </div>
+                {% endif %}
+            </div>
+        </section>
+
+        <!-- Модуль 2: Сообщество игры (Чат и Форум) -->
+        <section class="lg:col-span-6 border border-paper-300 dark:border-carbon-800 bg-paper-100 dark:bg-carbon-900 p-6 flex flex-col justify-between space-y-5">
+            <div class="space-y-4">
+                <div class="flex items-center justify-between border-b border-paper-300 dark:border-carbon-800 pb-3">
+                    <div class="flex items-center gap-2.5">
+                        <span class="font-mono text-xs px-1.5 py-0.5 bg-signal-500/15 border border-signal-500/40 text-signal-600 dark:text-signal-400 font-bold">
+                            #02
+                        </span>
+                        <h2 class="text-sm sm:text-base font-bold font-mono uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
+                            Сообщество игры
+                        </h2>
+                    </div>
+                </div>
+
+                <p class="font-mono text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                    Обсуждайте прохождение, делитесь впечатлениями или создавайте отдельные ветки по конкретным вопросам.
+                </p>
+
+                <!-- Карточки перехода в чат и форум -->
+                <div class="space-y-3 pt-1">
+                    <a href="{% url 'game_chat' game.pk %}"
+                       class="group flex items-center justify-between p-4 border border-paper-300 dark:border-carbon-800 bg-paper-50 dark:bg-carbon-950 hover:border-signal-500 dark:hover:border-signal-500 transition-colors">
+                        <div class="space-y-1">
+                            <span class="block font-mono text-[10px] uppercase tracking-widest text-signal-600 dark:text-signal-400">
+                                [LIVE_CHANNEL]
+                            </span>
+                            <span class="block font-mono text-sm font-bold text-zinc-900 dark:text-zinc-100 group-hover:text-signal-600 dark:group-hover:text-signal-400 transition-colors">
+                                Общий чат игры
+                            </span>
+                        </div>
+                        <span class="px-3 py-1.5 text-xs font-mono font-bold border border-signal-500 bg-signal-500/10 text-signal-600 dark:text-signal-400 group-hover:bg-signal-500 group-hover:text-carbon-950 transition-colors">
+                            ОТКРЫТЬ →
+                        </span>
+                    </a>
+
+                    <a href="{% url 'topic_list' game.pk %}"
+                       class="group flex items-center justify-between p-4 border border-paper-300 dark:border-carbon-800 bg-paper-50 dark:bg-carbon-950 hover:border-signal-500 dark:hover:border-signal-500 transition-colors">
+                        <div class="space-y-1">
+                            <span class="block font-mono text-[10px] uppercase tracking-widest text-signal-600 dark:text-signal-400">
+                                [THREADS // ТЕМ: {{ game.topics.count }}]
+                            </span>
+                            <span class="block font-mono text-sm font-bold text-zinc-900 dark:text-zinc-100 group-hover:text-signal-600 dark:group-hover:text-signal-400 transition-colors">
+                                Форум игры
+                            </span>
+                        </div>
+                        <span class="px-3 py-1.5 text-xs font-mono font-bold border border-signal-500 bg-signal-500/10 text-signal-600 dark:text-signal-400 group-hover:bg-signal-500 group-hover:text-carbon-950 transition-colors">
+                            ПЕРЕЙТИ →
+                        </span>
+                    </a>
+                </div>
+            </div>
+        </section>
+
+    </div>
+
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // 1. Заполнение звёзд среднего рейтинга
+    const avgContainer = document.querySelector('[data-avg-rating]');
+    const avgFill = document.getElementById('avg-stars-fill');
+    if (avgContainer && avgFill) {
+        const rawAvg = avgContainer.getAttribute('data-avg-rating').replace(',', '.');
+        const avgVal = parseFloat(rawAvg);
+        if (!isNaN(avgVal)) {
+            const pct = Math.max(0, Math.min(100, (avgVal / 10) * 100));
+            avgFill.style.width = pct + '%';
+        }
+    }
+
+    // 2. Интерактивный выбор 1..10 звёзд
+    const form = document.getElementById('rate-game-form');
+    const starContainer = document.getElementById('star-buttons');
+    if (!form || !starContainer) return;
+
+    const hiddenInput = form.querySelector('input[type="hidden"]:not([name="csrfmiddlewaretoken"])');
+    const buttons = Array.from(starContainer.querySelectorAll('.star-btn'));
+    const readout = document.getElementById('star-rating-readout');
+    const pickerBox = document.getElementById('star-picker-box');
+    const errorText = document.getElementById('star-picker-error');
+
+    let selectedValue = parseInt(hiddenInput ? hiddenInput.value : '', 10) || 0;
+
+    function renderStars(activeCount, isHover) {
+        buttons.forEach((btn) => {
+            const val = parseInt(btn.getAttribute('data-star-value'), 10);
+            btn.classList.remove(
+                'text-signal-500',
+                'text-signal-400',
+                'text-zinc-300',
+                'dark:text-zinc-700'
+            );
+            if (val <= activeCount) {
+                btn.classList.add(isHover ? 'text-signal-400' : 'text-signal-500');
+            } else {
+                btn.classList.add('text-zinc-300', 'dark:text-zinc-700');
+            }
+        });
+
+        if (readout) {
+            readout.textContent = activeCount > 0 ? `${activeCount} / 10` : '— / 10';
+        }
+    }
+
+    // Инициализация при загрузке (если оценка уже была поставлена)
+    renderStars(selectedValue, false);
+
+    buttons.forEach((btn) => {
+        const val = parseInt(btn.getAttribute('data-star-value'), 10);
+
+        btn.addEventListener('mouseenter', () => {
+            renderStars(val, true);
+        });
+
+        btn.addEventListener('click', () => {
+            selectedValue = val;
+            if (hiddenInput) hiddenInput.value = val;
+            renderStars(selectedValue, false);
+
+            if (pickerBox) {
+                pickerBox.classList.remove('border-red-500');
+            }
+            if (errorText) {
+                errorText.classList.add('hidden');
+            }
+        });
+    });
+
+    starContainer.addEventListener('mouseleave', () => {
+        renderStars(selectedValue, false);
+    });
+
+    form.addEventListener('submit', (e) => {
+        if (!hiddenInput || !hiddenInput.value) {
+            e.preventDefault();
+            if (pickerBox) pickerBox.classList.add('border-red-500');
+            if (errorText) errorText.classList.remove('hidden');
+        }
+    });
+});
+</script>
 {% endblock %}
