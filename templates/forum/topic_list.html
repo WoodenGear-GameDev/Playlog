@@ -72,7 +72,7 @@
                     </div>
 
                     <div class="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-xs text-zinc-500 dark:text-zinc-400">
-                        <span>Автор: <strong class="text-zinc-800 dark:text-zinc-200">@{{ topic.author.username }}</strong></span>
+                        <span>Автор: <strong class="text-zinc-800 dark:text-zinc-200">{% if topic.author_id %}@{% endif %}{{ topic.author_name }}</strong></span>
                         <span class="text-zinc-300 dark:text-zinc-700">|</span>
                         <span>создана {{ topic.created_at|date:"d.m.Y H:i" }}</span>
                     </div>

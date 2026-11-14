@@ -26,7 +26,7 @@
             <div class="p-4 border border-paper-300 dark:border-carbon-800 bg-paper-50 dark:bg-carbon-950 space-y-2 font-mono text-xs sm:text-sm">
                 <p class="text-zinc-700 dark:text-zinc-300">
                     Тема: <strong class="text-zinc-950 dark:text-white">{{ topic.title }}</strong>
-                    <span class="text-zinc-500">(автор: @{{ topic.author.username }})</span>
+                    <span class="text-zinc-500">(автор: {% if topic.author_id %}@{% endif %}{{ topic.author_name }})</span>
                 </p>
                 <p class="text-zinc-600 dark:text-zinc-400 text-xs">
                     Вместе с ней будет удалено сообщений: <strong class="text-red-600 dark:text-red-400">{{ posts_count }}</strong>.
