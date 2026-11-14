@@ -57,6 +57,11 @@ def topic_detail(request, pk):
     )
 
     if request.method == 'POST':
+        if topic.is_deleted:
+            raise PermissionDenied
+        if not request.user.is_authenticated:
+            return redirect_to_login(request.get_full_path())
+        
         if not request.user.is_authenticated:
             return redirect_to_login(request.get_full_path())
         form = PostForm(request.POST)
@@ -218,9 +223,14 @@ def _updates_response(request, posts):
     if not batch:
         return JsonResponse({'count': 0})
 
+    # Сквозной номер первого нового сообщения: так же считает пагинатор
+    first_number = posts.filter(pk__lt=batch[0].pk).count() + 1
     html = render_to_string(
         'forum/_posts_fragment.html',
-        {'posts': batch, 'page': SimpleNamespace(number=page_number)},
+        {
+            'posts': batch,
+            'page': SimpleNamespace(number=page_number, start_index=first_number),
+        },
         request=request,
     )
     return JsonResponse({

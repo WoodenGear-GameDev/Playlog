@@ -1,6 +1,8 @@
 from django.db import models
 from django.conf import settings
 
+from accounts.constants import DELETED_USER_NAME
+
 
 class Category(models.Model):
     name = models.CharField('Название', max_length=100, unique=True)
@@ -42,7 +44,9 @@ RATING_CHOICES = [(i, str(i)) for i in range(1, 11)]
 class Rating(models.Model):
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
         related_name='ratings',
         verbose_name='Пользователь',
     )
@@ -65,5 +69,9 @@ class Rating(models.Model):
             ),
         ]
 
+    @property
+    def author_name(self):
+        return self.user.username if self.user_id else DELETED_USER_NAME
+
     def __str__(self):
-        return f'{self.user} → {self.game}: {self.value}'
+        return f'{self.author_name} → {self.game}: {self.value}'

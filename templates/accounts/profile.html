@@ -52,11 +52,6 @@
                     <span>РЕДАКТИРОВАТЬ ПРОФИЛЬ</span>
                     <span>→</span>
                 </a>
-                <a href="{% url 'password_change' %}"
-                   class="inline-flex items-center gap-2 px-4 py-2 text-xs font-mono font-bold uppercase tracking-wider border border-signal-500 bg-signal-500/10 hover:bg-signal-500 text-signal-600 dark:text-signal-400 hover:text-carbon-950 dark:hover:text-carbon-950 transition-colors">
-                    <span>СМЕНИТЬ ПАРОЛЬ</span>
-                    <span>→</span>
-                </a>
             </div>
         </section>
 
@@ -120,6 +115,51 @@
 
     </div>
 
+    <!-- Управление аккаунтом -->
+    <section class="border border-paper-300 dark:border-carbon-800 bg-paper-100 dark:bg-carbon-900">
+        <div class="px-6 py-4 border-b border-paper-300 dark:border-carbon-800 bg-paper-50 dark:bg-carbon-950/60 flex items-center gap-2">
+            <span class="w-2 h-2 bg-signal-500"></span>
+            <h2 class="text-sm sm:text-base font-bold font-mono uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
+                Управление аккаунтом
+            </h2>
+        </div>
+
+        <div class="divide-y divide-paper-300 dark:divide-carbon-800">
+
+            <!-- Смена пароля -->
+            <div class="px-6 py-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div class="font-mono text-xs space-y-1">
+                    <p class="font-bold uppercase tracking-wider text-zinc-900 dark:text-zinc-100">Пароль</p>
+                    <p class="text-zinc-600 dark:text-zinc-400">
+                        Смена по текущему паролю. Если вы его забыли, на странице смены есть восстановление по почте.
+                    </p>
+                </div>
+                <a href="{% url 'password_change' %}"
+                   class="inline-flex items-center justify-center gap-2 px-4 py-2 text-xs font-mono font-bold uppercase tracking-wider border border-signal-500 bg-signal-500/10 hover:bg-signal-500 text-signal-600 dark:text-signal-400 hover:text-carbon-950 dark:hover:text-carbon-950 transition-colors flex-shrink-0">
+                    <span>СМЕНИТЬ ПАРОЛЬ</span>
+                    <span>→</span>
+                </a>
+            </div>
+
+            <!-- Удаление аккаунта -->
+            <div class="px-6 py-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div class="font-mono text-xs space-y-1">
+                    <p class="text-[10px] uppercase tracking-widest text-red-600 dark:text-red-400">[DANGER_ZONE]</p>
+                    <p class="font-bold uppercase tracking-wider text-zinc-900 dark:text-zinc-100">Удаление аккаунта</p>
+                    <p class="text-zinc-600 dark:text-zinc-400">
+                        Необратимо. Подтверждается паролем и письмом на почту.
+                    </p>
+                </div>
+                <a href="{% url 'account_delete' %}"
+                   class="inline-flex items-center justify-center gap-2 px-4 py-2 text-xs font-mono font-bold uppercase tracking-wider border border-red-500 bg-red-500/10 hover:bg-red-500 text-red-600 dark:text-red-400 hover:text-white dark:hover:text-white transition-colors flex-shrink-0">
+                    <span>УДАЛИТЬ АККАУНТ</span>
+                    <span>→</span>
+                </a>
+            </div>
+
+        </div>
+    </section>
+
     <!-- Библиотека Steam -->
     <section id="library" class="space-y-4">
         <div class="flex items-center justify-between pb-2 border-b border-paper-300 dark:border-carbon-800">
@@ -151,8 +191,8 @@
                                  alt="{{ entry.display_name }}"
                                  loading="lazy"
                                  class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
-                        {% elif entry.appid %}
-                            <img src="https://cdn.akamai.steamstatic.com/steam/apps/{{ entry.appid }}/header.jpg"
+                        {% elif entry.steam_app_id %}
+                            <img src="https://cdn.akamai.steamstatic.com/steam/apps/{{ entry.steam_app_id }}/header.jpg"
                                  alt="{{ entry.display_name }}"
                                  loading="lazy"
                                  onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
