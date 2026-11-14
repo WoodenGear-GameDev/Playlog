@@ -65,13 +65,26 @@
                 </span>
                 {% endif %}
             </div>
+
+            {% if live %}
+            <span class="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest text-signal-600 dark:text-signal-400">
+                <span class="w-1.5 h-1.5 bg-signal-500"></span>
+                LIVE
+            </span>
+            {% endif %}
         </div>
 
-        <div class="space-y-3">
+        <!-- Контейнер для автообновления: только сообщения и блок «пусто» -->
+        <div id="posts-list"
+             class="space-y-3"
+             data-live="{% if live %}1{% else %}0{% endif %}"
+             data-updates-url="{% url 'topic_updates' topic.pk %}"
+             data-last-id="{{ last_id }}"
+             data-page="{{ page.number }}">
             {% for post in page %}
                 {% include 'forum/_post.html' %}
             {% empty %}
-                <div class="border border-paper-300 dark:border-carbon-800 bg-paper-100 dark:bg-carbon-900 p-8 text-center font-mono text-xs sm:text-sm text-zinc-500 dark:text-zinc-400">
+                <div id="empty-note" class="border border-paper-300 dark:border-carbon-800 bg-paper-100 dark:bg-carbon-900 p-8 text-center font-mono text-xs sm:text-sm text-zinc-500 dark:text-zinc-400">
                     Ответов пока нет.
                 </div>
             {% endfor %}
@@ -117,4 +130,6 @@
     {% include 'forum/_reply_form.html' %}
 
 </div>
+
+{% include 'forum/_live_script.html' %}
 {% endblock %}

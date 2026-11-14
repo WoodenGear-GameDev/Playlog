@@ -28,11 +28,26 @@
 
     <!-- Заголовок чата -->
     <div class="border-b border-paper-300 dark:border-carbon-800 pb-4">
-        <div class="flex items-center gap-2 mb-1">
-            <span class="w-2 h-2 bg-signal-500"></span>
-            <p class="font-mono text-[10px] uppercase tracking-widest text-signal-600 dark:text-signal-400">
-                [LIVE_CHANNEL]
-            </p>
+        <div class="flex flex-wrap items-center gap-x-4 gap-y-1 mb-1">
+            {% if live %}
+            <div class="flex items-center gap-2">
+                <span class="w-2 h-2 bg-signal-500"></span>
+                <p class="font-mono text-[10px] uppercase tracking-widest text-signal-600 dark:text-signal-400">
+                    [LIVE_CHANNEL]
+                </p>
+            </div>
+            {% else %}
+            <div class="flex items-center gap-2">
+                <span class="w-2 h-2 bg-zinc-400 dark:bg-zinc-600"></span>
+                <p class="font-mono text-[10px] uppercase tracking-widest text-zinc-500 dark:text-zinc-400">
+                    [ARCHIVE] // АВТООБНОВЛЕНИЕ ВЫКЛЮЧЕНО
+                </p>
+            </div>
+            <a href="{% url 'game_chat' game.pk %}"
+               class="font-mono text-[10px] font-bold uppercase tracking-widest text-signal-600 dark:text-signal-400 hover:underline">
+                К ПОСЛЕДНИМ СООБЩЕНИЯМ →
+            </a>
+            {% endif %}
         </div>
         <h1 class="text-2xl sm:text-3xl font-bold font-mono tracking-tight text-zinc-950 dark:text-white">
             Общий чат: {{ game }}
@@ -50,12 +65,17 @@
     </div>
     {% endif %}
 
-    <!-- Лента сообщений чата -->
-    <section class="space-y-3">
+    <!-- Лента сообщений чата (контейнер для автообновления: только сообщения и блок «пусто») -->
+    <section id="posts-list"
+             class="space-y-3"
+             data-live="{% if live %}1{% else %}0{% endif %}"
+             data-updates-url="{% url 'game_chat_updates' game.pk %}"
+             data-last-id="{{ last_id }}"
+             data-page="{{ page.number }}">
         {% for post in page %}
             {% include 'forum/_post.html' %}
         {% empty %}
-            <div class="border border-paper-300 dark:border-carbon-800 bg-paper-100 dark:bg-carbon-900 p-10 text-center font-mono space-y-2">
+            <div id="empty-note" class="border border-paper-300 dark:border-carbon-800 bg-paper-100 dark:bg-carbon-900 p-10 text-center font-mono space-y-2">
                 <p class="text-xs uppercase tracking-widest text-zinc-400 dark:text-zinc-500">[EMPTY_CHANNEL]</p>
                 <p class="text-sm text-zinc-600 dark:text-zinc-400">В чате пока нет сообщений. Напишите первое!</p>
             </div>
@@ -77,4 +97,6 @@
     {% include 'forum/_reply_form.html' with form_title='Написать в чат' login_hint='написать в чат' %}
 
 </div>
+
+{% include 'forum/_live_script.html' %}
 {% endblock %}
