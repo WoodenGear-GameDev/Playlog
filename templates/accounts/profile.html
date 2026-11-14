@@ -191,8 +191,8 @@
                                  alt="{{ entry.display_name }}"
                                  loading="lazy"
                                  class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
-                        {% elif entry.appid %}
-                            <img src="https://cdn.akamai.steamstatic.com/steam/apps/{{ entry.appid }}/header.jpg"
+                        {% elif entry.steam_app_id %}
+                            <img src="https://cdn.akamai.steamstatic.com/steam/apps/{{ entry.steam_app_id }}/header.jpg"
                                  alt="{{ entry.display_name }}"
                                  loading="lazy"
                                  onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
