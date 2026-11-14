@@ -27,22 +27,22 @@
                 },
                 extend: {
                     colors: {
-                        // Чистый нейтральный графит без синего оттенка
+                        // Сбалансированный графит без синевы и без глухого чёрного
                         carbon: {
-                            950: '#0A0A0B', // Основной тёмный фон
-                            900: '#121214', // Фон карточек и шапки
-                            850: '#18181B', // Ховер и вложенные блоки
-                            800: '#242429', // Границы 1px
-                            700: '#34343B', // Активные границы
+                            950: '#141416', // Основной тёмный фон
+                            900: '#1C1C1F', // Фон карточек и шапки
+                            850: '#242429', // Ховер и вложенные блоки
+                            800: '#2E2E34', // Границы 1px
+                            700: '#3F3F46', // Активные границы
                         },
-                        // Чистая светлая тема (тёплая бумага + белый)
+                        // Чистая воздушная светлая тема без грязного серого оттенка
                         paper: {
-                            50: '#F6F6F4',  // Основной светлый фон
-                            100: '#FFFFFF', // Фон карточек
-                            200: '#ECECE8', // Ховер
-                            300: '#D4D4D8', // Границы 1px
+                            50: '#FAFAFA',  // Основной светлый фон
+                            100: '#FFFFFF', // Фон карточек и шапки
+                            200: '#F4F4F5', // Ховер и заглушки обложек
+                            300: '#E4E4E7', // Границы 1px
                         },
-                        // Чистый зелёный акцент
+                        // Зелёный акцент (без изменений)
                         signal: {
                             400: '#4ADE80',
                             500: '#22C55E',
@@ -86,7 +86,7 @@
         input[type="file"]::file-selector-button:hover,
         input[type="file"]:hover::file-selector-button {
             background-color: #22C55E !important;
-            color: #0A0A0B !important;
+            color: #141416 !important;
         }
 
         /* Лёгкая штриховка для карточек без обложки */
@@ -95,8 +95,8 @@
                 -45deg,
                 transparent,
                 transparent 8px,
-                rgba(128, 128, 138, 0.07) 8px,
-                rgba(128, 128, 138, 0.07) 9px
+                rgba(128, 128, 138, 0.06) 8px,
+                rgba(128, 128, 138, 0.06) 9px
             );
         }
 
@@ -108,13 +108,13 @@
             background: transparent;
         }
         .dark .game-strip::-webkit-scrollbar-thumb {
-            background: #242429;
+            background: #2E2E34;
         }
         .dark .game-strip::-webkit-scrollbar-thumb:hover {
             background: #22C55E;
         }
         .light .game-strip::-webkit-scrollbar-thumb {
-            background: #D4D4D8;
+            background: #E4E4E7;
         }
         .light .game-strip::-webkit-scrollbar-thumb:hover {
             background: #22C55E;
