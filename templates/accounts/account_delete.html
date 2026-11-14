@@ -1,0 +1,106 @@
+{% extends 'base.html' %}
+
+{% block title %}Удаление аккаунта // PLAYLOG{% endblock %}
+
+{% block content %}
+<div class="max-w-xl mx-auto my-4 sm:my-10">
+    <div class="border border-red-500/60 bg-paper-100 dark:bg-carbon-900">
+
+        <!-- Шапка предупреждения -->
+        <div class="px-6 py-4 border-b border-paper-300 dark:border-carbon-800 bg-red-500/10 flex items-center justify-between">
+            <div>
+                <p class="font-mono text-[10px] uppercase tracking-widest text-red-600 dark:text-red-400">
+                    [ACCOUNT // DELETE]
+                </p>
+                <h1 class="text-xl font-bold font-mono uppercase tracking-tight text-zinc-950 dark:text-white mt-0.5">
+                    Удаление аккаунта
+                </h1>
+            </div>
+            <span class="px-2 py-0.5 font-mono text-[10px] font-bold bg-red-500 text-white">DEL</span>
+        </div>
+
+        <form method="post" class="p-6 space-y-6">
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+            <div class="p-3 border border-red-500 bg-red-500/10 text-xs font-mono text-red-700 dark:text-red-300 space-y-1">
+                {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+            </div>
+            {% endif %}
+
+            <div class="p-4 border border-paper-300 dark:border-carbon-800 bg-paper-50 dark:bg-carbon-950 space-y-2 font-mono text-xs text-zinc-600 dark:text-zinc-400">
+                <p>Сейчас на сайте: сообщений <strong class="text-zinc-950 dark:text-white">{{ summary.posts }}</strong>,
+                    тем <strong class="text-zinc-950 dark:text-white">{{ summary.topics }}</strong>,
+                    оценок <strong class="text-zinc-950 dark:text-white">{{ summary.ratings }}</strong>.</p>
+                <p>Профиль, аватар и библиотека игр удаляются в любом случае.</p>
+            </div>
+
+            <!-- Режим -->
+            <fieldset class="space-y-2">
+                <legend class="font-mono text-xs font-semibold uppercase tracking-wider text-zinc-700 dark:text-zinc-300 mb-2">
+                    {{ form.mode.label }}
+                </legend>
+                {% for radio in form.mode %}
+                <label class="flex items-start gap-3 p-3 border border-paper-300 dark:border-carbon-800 bg-paper-50 dark:bg-carbon-950 cursor-pointer hover:border-signal-500 transition-colors">
+                    <span class="mt-0.5">{{ radio.tag }}</span>
+                    <span class="font-mono text-xs space-y-1">
+                        <strong class="block text-zinc-900 dark:text-zinc-100 uppercase">
+                            {% if radio.data.value == 'keep' %}Оставить мои действия{% else %}Удалить мои действия{% endif %}
+                        </strong>
+                        <span class="block text-zinc-600 dark:text-zinc-400">
+                            {% if radio.data.value == 'keep' %}
+                            Сообщения, темы и оценки останутся, автор будет показан как «Удалённый пользователь».
+                            {% else %}
+                            Сообщения превратятся в «Сообщение удалено», оценки будут стёрты, темы без чужих ответов удалятся.
+                            {% endif %}
+                        </span>
+                    </span>
+                </label>
+                {% endfor %}
+                {% for error in form.mode.errors %}
+                <p class="text-xs font-mono text-red-600 dark:text-red-400">→ {{ error }}</p>
+                {% endfor %}
+            </fieldset>
+
+            <!-- Пароль -->
+            <div class="space-y-1.5">
+                <label for="{{ form.password.id_for_label }}" class="block font-mono text-xs font-semibold uppercase tracking-wider text-zinc-700 dark:text-zinc-300">
+                    {{ form.password.label }}
+                </label>
+                <div class="[&_input]:w-full [&_input]:px-3 [&_input]:py-2.5 [&_input]:text-sm [&_input]:font-mono [&_input]:border [&_input]:border-paper-300 dark:[&_input]:border-carbon-800 [&_input]:bg-paper-50 dark:[&_input]:bg-carbon-950 [&_input]:text-zinc-900 dark:[&_input]:text-zinc-100 focus:[&_input]:outline-none focus:[&_input]:border-red-500">
+                    {{ form.password }}
+                </div>
+                {% for error in form.password.errors %}
+                <p class="text-xs font-mono text-red-600 dark:text-red-400">→ {{ error }}</p>
+                {% endfor %}
+            </div>
+
+            <!-- Подтверждение -->
+            <div class="space-y-1.5">
+                <label class="flex items-start gap-3 font-mono text-xs text-zinc-700 dark:text-zinc-300 cursor-pointer">
+                    <span class="mt-0.5">{{ form.confirm }}</span>
+                    <span>{{ form.confirm.label }}</span>
+                </label>
+                {% for error in form.confirm.errors %}
+                <p class="text-xs font-mono text-red-600 dark:text-red-400">→ {{ error }}</p>
+                {% endfor %}
+            </div>
+
+            <p class="font-mono text-[11px] text-zinc-500 dark:text-zinc-400">
+                После нажатия мы отправим письмо со ссылкой, по которой удаление нужно подтвердить.
+            </p>
+
+            <div class="flex flex-col-reverse sm:flex-row items-center justify-end gap-3 pt-1">
+                <a href="{% url 'profile' %}"
+                   class="w-full sm:w-auto text-center px-4 py-2.5 text-xs font-mono font-semibold uppercase tracking-wider border border-paper-300 dark:border-carbon-800 hover:border-zinc-500 bg-paper-50 dark:bg-carbon-950 text-zinc-700 dark:text-zinc-300 transition-colors">
+                    ОТМЕНА
+                </a>
+                <button type="submit"
+                        class="w-full sm:w-auto px-5 py-2.5 text-xs font-mono font-bold uppercase tracking-wider bg-red-500 hover:bg-red-600 text-white border border-red-500 transition-colors">
+                    ПРОДОЛЖИТЬ →
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

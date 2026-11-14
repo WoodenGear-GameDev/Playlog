@@ -21,7 +21,7 @@
         <blockquote class="border-l-2 border-signal-500 bg-paper-50 dark:bg-carbon-950 p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 font-mono text-xs">
             <div class="text-zinc-600 dark:text-zinc-400 min-w-0">
                 <span class="text-zinc-500">В ответ на</span>
-                <strong class="text-signal-600 dark:text-signal-400">@{{ reply_target.author.username }}</strong>:
+                <strong class="text-signal-600 dark:text-signal-400">{% if reply_target.author_id %}@{% endif %}{{ reply_target.author_name }}</strong>:
                 <span class="text-zinc-700 dark:text-zinc-300">{{ reply_target.body|truncatechars:100 }}</span>
             </div>
             <a href="?page={{ page.number }}#reply-form"

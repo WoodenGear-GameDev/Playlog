@@ -39,13 +39,17 @@
             </h1>
 
             <div class="font-mono text-xs text-zinc-600 dark:text-zinc-400">
-                Автор: <strong class="text-signal-600 dark:text-signal-400">@{{ topic.author.username }}</strong>
+                Автор: <strong class="text-signal-600 dark:text-signal-400">{% if topic.author_id %}@{% endif %}{{ topic.author_name }}</strong>
             </div>
         </div>
 
         <!-- Текст темы -->
         <div class="p-6 text-sm sm:text-base text-zinc-800 dark:text-zinc-200 leading-relaxed [&_p]:mb-3 last:[&_p]:mb-0">
+            {% if topic.is_deleted %}
+            <p class="italic text-zinc-500 dark:text-zinc-400">[Тема удалена.]</p>
+            {% else %}
             {{ topic.body|linebreaks }}
+            {% endif %}
         </div>
     </article>
 
@@ -127,7 +131,13 @@
     {% endif %}
 
     <!-- Форма ответа -->
+    {% if topic.is_deleted %}
+    <div class="border border-paper-300 dark:border-carbon-800 bg-paper-100 dark:bg-carbon-900 p-6 font-mono text-xs sm:text-sm text-zinc-500 dark:text-zinc-400">
+        Тема удалена: новые ответы недоступны.
+    </div>
+    {% else %}
     {% include 'forum/_reply_form.html' %}
+    {% endif %}
 
 </div>
 

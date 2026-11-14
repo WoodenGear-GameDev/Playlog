@@ -23,16 +23,38 @@ POSTS_PER_PAGE = 20
 CHAT_PER_PAGE = 30
 UPDATES_BATCH = 50
 
+DEFAULT_TOPIC_SORT = 'new'
+TOPIC_SORTS = {
+    'new': ('-last_activity', '-pk'),
+    'old': ('created_at', 'pk'),
+    'popular': ('-posts_count', '-last_activity', '-pk'),
+}
+TOPIC_SORT_LABELS = [
+    ('popular', 'Популярные'),
+    ('new', 'Недавно'),
+    ('old', 'Давно'),
+]
+
 
 def topic_list(request, game_pk):
     game = get_object_or_404(Game, pk=game_pk)
+
+    sort = request.GET.get('sort')
+    if sort not in TOPIC_SORTS:
+        sort = DEFAULT_TOPIC_SORT
+
     topics = (
         game.topics.select_related('author')
         .annotate(posts_count=Count('posts', filter=Q(posts__is_deleted=False)))
-        .order_by('-last_activity', '-pk')
+        .order_by(*TOPIC_SORTS[sort])
     )
     page = Paginator(topics, 20).get_page(request.GET.get('page'))
-    return render(request, 'forum/topic_list.html', {'game': game, 'page': page})
+    return render(request, 'forum/topic_list.html', {
+        'game': game,
+        'page': page,
+        'sort': sort,
+        'sort_options': TOPIC_SORT_LABELS,
+    })
 
 
 @login_required
@@ -57,6 +79,11 @@ def topic_detail(request, pk):
     )
 
     if request.method == 'POST':
+        if topic.is_deleted:
+            raise PermissionDenied
+        if not request.user.is_authenticated:
+            return redirect_to_login(request.get_full_path())
+        
         if not request.user.is_authenticated:
             return redirect_to_login(request.get_full_path())
         form = PostForm(request.POST)
@@ -218,9 +245,14 @@ def _updates_response(request, posts):
     if not batch:
         return JsonResponse({'count': 0})
 
+    # Сквозной номер первого нового сообщения: так же считает пагинатор
+    first_number = posts.filter(pk__lt=batch[0].pk).count() + 1
     html = render_to_string(
         'forum/_posts_fragment.html',
-        {'posts': batch, 'page': SimpleNamespace(number=page_number)},
+        {
+            'posts': batch,
+            'page': SimpleNamespace(number=page_number, start_index=first_number),
+        },
         request=request,
     )
     return JsonResponse({

@@ -27,4 +27,6 @@ urlpatterns = [
         views.PasswordResetConfirm.as_view(),
         name='password_reset_confirm',
     ),
+    path('delete/', views.account_delete, name='account_delete'),
+    path('delete/confirm/<str:token>/', views.account_delete_confirm, name='account_delete_confirm'),
 ]

@@ -3,7 +3,7 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect, render
 from django.utils.encoding import force_str
 from django.utils.http import urlsafe_base64_decode
-from django.contrib.auth import views as auth_views
+from django.contrib.auth import views as auth_views, logout 
 from django.contrib.messages.views import SuccessMessageMixin
 from django.urls import reverse, reverse_lazy
 from django.contrib import messages
@@ -14,6 +14,7 @@ from django.core.paginator import Paginator
 from django.shortcuts import get_object_or_404
 
 import secrets
+import time
 from urllib.parse import urlencode
 
 from .steam_openid import build_login_url, verify_assertion
@@ -23,9 +24,13 @@ from .confirmation import (
     purge_expired_unconfirmed,
     send_confirmation_email,
 )
-from .forms import AvatarForm, RegisterForm, ResendConfirmationForm, UsernameForm
+from .forms import AvatarForm, RegisterForm, ResendConfirmationForm, UsernameForm, DeleteAccountForm
 from catalog.models import Game
 from .models import LibraryGame, Profile
+from .deletion import DeletionError, check_can_delete, content_summary, delete_user_account
+from .self_delete import read_token, send_delete_email
+
+DELETE_EMAIL_COOLDOWN = 60
 
 
 def register(request):
@@ -214,3 +219,70 @@ class PasswordResetConfirm(SuccessMessageMixin, auth_views.PasswordResetConfirmV
     template_name = 'accounts/password_reset_confirm.html'
     success_url = reverse_lazy('login')
     success_message = 'Пароль изменён. Войдите с новым паролем.'
+
+@login_required
+def account_delete(request):
+    user = request.user
+    if not user.email:
+        messages.error(
+            request,
+            'У аккаунта не указана почта, поэтому подтвердить удаление письмом '
+            'нельзя. Обратитесь к администратору.',
+        )
+        return redirect('profile')
+    try:
+        check_can_delete(user)
+    except DeletionError as exc:
+        messages.error(request, f'Удаление невозможно: {exc}')
+        return redirect('profile')
+
+    if request.method == 'POST':
+        form = DeleteAccountForm(user, request.POST)
+        if form.is_valid():
+            last_sent = request.session.get('delete_email_sent_at', 0)
+            if time.time() - last_sent < DELETE_EMAIL_COOLDOWN:
+                form.add_error(None, 'Письмо уже отправлено. Повторить можно через минуту.')
+            else:
+                try:
+                    send_delete_email(request, user, form.cleaned_data['mode'])
+                except Exception:
+                    form.add_error(None, 'Не удалось отправить письмо. Попробуйте позже.')
+                else:
+                    request.session['delete_email_sent_at'] = time.time()
+                    messages.success(
+                        request,
+                        'Мы отправили письмо со ссылкой для подтверждения. '
+                        'Ссылка действует 1 час.',
+                    )
+                    return redirect('profile')
+    else:
+        form = DeleteAccountForm(user)
+
+    return render(request, 'accounts/account_delete.html', {
+        'form': form,
+        'summary': content_summary(user),
+    })
+
+
+@login_required
+def account_delete_confirm(request, token):
+    # Берём свежую запись из БД: нужен настоящий объект, а не обёртка request.user
+    user = get_user_model().objects.get(pk=request.user.pk)
+    mode = read_token(token, user)
+    if mode is None:
+        return render(request, 'accounts/account_delete_invalid.html')
+
+    if request.method == 'POST':
+        try:
+            delete_user_account(user, purge_content=(mode == 'purge'))
+        except DeletionError as exc:
+            messages.error(request, f'Удаление невозможно: {exc}')
+            return redirect('profile')
+        logout(request)
+        messages.success(request, 'Аккаунт удалён.')
+        return redirect('home')
+
+    return render(request, 'accounts/account_delete_confirm.html', {
+        'mode': mode,
+        'summary': content_summary(user),
+    })

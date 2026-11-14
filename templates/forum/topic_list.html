@@ -53,6 +53,20 @@
         {% endif %}
     </div>
 
+    <!-- Сортировка тем -->
+    {% if page.paginator.count > 1 %}
+    <nav class="flex flex-wrap items-center gap-2 font-mono text-[11px]" aria-label="Сортировка тем">
+        <span class="text-zinc-500 uppercase tracking-wider">СОРТИРОВКА:</span>
+        {% for key, label in sort_options %}
+        <a href="?sort={{ key }}"
+           {% if key == sort %}aria-current="true"{% endif %}
+           class="px-2.5 py-1 font-bold uppercase border transition-colors {% if key == sort %}border-signal-500 bg-signal-500 text-carbon-950{% else %}border-paper-300 dark:border-carbon-800 hover:border-signal-500 bg-paper-100 dark:bg-carbon-900 text-zinc-600 dark:text-zinc-400 hover:text-signal-600 dark:hover:text-signal-400{% endif %}">
+            {{ label }}
+        </a>
+        {% endfor %}
+    </nav>
+    {% endif %}
+
     <!-- Список тем -->
     <div class="space-y-3">
         {% for topic in page %}
@@ -72,7 +86,7 @@
                     </div>
 
                     <div class="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-xs text-zinc-500 dark:text-zinc-400">
-                        <span>Автор: <strong class="text-zinc-800 dark:text-zinc-200">@{{ topic.author.username }}</strong></span>
+                        <span>Автор: <strong class="text-zinc-800 dark:text-zinc-200">{% if topic.author_id %}@{% endif %}{{ topic.author_name }}</strong></span>
                         <span class="text-zinc-300 dark:text-zinc-700">|</span>
                         <span>создана {{ topic.created_at|date:"d.m.Y H:i" }}</span>
                     </div>
@@ -114,7 +128,7 @@
     <div class="pt-4 flex flex-wrap items-center justify-between gap-3 border-t border-paper-300 dark:border-carbon-800 font-mono text-xs">
         <div>
             {% if page.has_previous %}
-                <a href="?page={{ page.previous_page_number }}"
+                <a href="?sort={{ sort }}&amp;page={{ page.previous_page_number }}"
                    class="inline-block px-3 py-1.5 font-bold border border-signal-500 bg-signal-500/10 hover:bg-signal-500 text-signal-600 dark:text-signal-400 hover:text-carbon-950 dark:hover:text-carbon-950 transition-colors">
                     ← НАЗАД
                 </a>
@@ -131,7 +145,7 @@
 
         <div>
             {% if page.has_next %}
-                <a href="?page={{ page.next_page_number }}"
+                <a href="?sort={{ sort }}&amp;page={{ page.next_page_number }}"
                    class="inline-block px-3 py-1.5 font-bold border border-signal-500 bg-signal-500/10 hover:bg-signal-500 text-signal-600 dark:text-signal-400 hover:text-carbon-950 dark:hover:text-carbon-950 transition-colors">
                     ВПЕРЁД →
                 </a>

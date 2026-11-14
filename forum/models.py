@@ -2,6 +2,8 @@ from django.conf import settings
 from django.db import models
 from django.utils import timezone
 
+from accounts.constants import DELETED_USER_NAME
+
 
 class Topic(models.Model):
     game = models.ForeignKey(
@@ -12,7 +14,9 @@ class Topic(models.Model):
     )
     author = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
         related_name='topics',
         verbose_name='Автор',
     )
@@ -23,6 +27,8 @@ class Topic(models.Model):
         'Последняя активность', default=timezone.now, db_index=True
     )
 
+    is_deleted = models.BooleanField('Удалена', default=False)
+
     class Meta:
         verbose_name = 'Тема'
         verbose_name_plural = 'Темы'
@@ -30,6 +36,10 @@ class Topic(models.Model):
 
     def __str__(self):
         return self.title
+
+    @property
+    def author_name(self):
+        return self.author.username if self.author_id else DELETED_USER_NAME
 
 
 class Post(models.Model):
@@ -51,7 +61,9 @@ class Post(models.Model):
     )
     author = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
         related_name='forum_posts',
         verbose_name='Автор',
     )
@@ -83,4 +95,8 @@ class Post(models.Model):
         ]
 
     def __str__(self):
-        return f'{self.author}: {self.body[:40]}'
+        return f'{self.author_name}: {self.body[:40]}'
+
+    @property
+    def author_name(self):
+        return self.author.username if self.author_id else DELETED_USER_NAME
