@@ -1,14 +1,81 @@
 {% extends 'base.html' %}
 
-{% block title %}Вход | Playlog{% endblock %}
+{% block title %}Вход // PLAYLOG{% endblock %}
 
 {% block content %}
-<h1>Вход</h1>
-<form method="post">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit">Войти</button>
-</form>
-<p><a href="{% url 'resend_confirmation' %}">Не пришло письмо подтверждения?</a></p>
-<p><a href="{% url 'register' %}">Нет аккаунта? Зарегистрироваться</a></p>
+<div class="max-w-md mx-auto my-4 sm:my-10">
+    <div class="border border-paper-300 dark:border-carbon-800 bg-paper-100 dark:bg-carbon-900">
+
+        <!-- Шапка карточки -->
+        <div class="px-6 py-4 border-b border-paper-300 dark:border-carbon-800 bg-paper-50 dark:bg-carbon-950/60 flex items-center justify-between">
+            <div>
+                <p class="font-mono text-[10px] uppercase tracking-widest text-signal-600 dark:text-signal-400">
+                    [AUTH // ACCESS]
+                </p>
+                <h1 class="text-xl font-bold font-mono uppercase tracking-tight text-zinc-950 dark:text-white mt-0.5">
+                    Вход
+                </h1>
+            </div>
+            <span class="w-2.5 h-2.5 bg-signal-500"></span>
+        </div>
+
+        <!-- Форма -->
+        <form method="post" class="p-6 space-y-5">
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+            <div class="p-3 border border-red-500 bg-red-500/10 text-xs font-mono text-red-700 dark:text-red-300 space-y-1">
+                {% for error in form.non_field_errors %}
+                    <p>{{ error }}</p>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            {% for hidden in form.hidden_fields %}
+                {{ hidden }}
+            {% endfor %}
+
+            {% for field in form.visible_fields %}
+            <div class="space-y-1.5">
+                <label for="{{ field.id_for_label }}" class="block font-mono text-xs font-semibold uppercase tracking-wider text-zinc-700 dark:text-zinc-300">
+                    {{ field.label }}
+                </label>
+
+                <div class="[&_input]:w-full [&_input]:px-3 [&_input]:py-2.5 [&_input]:text-sm [&_input]:font-mono [&_input]:border [&_input]:border-paper-300 dark:[&_input]:border-carbon-800 [&_input]:bg-paper-50 dark:[&_input]:bg-carbon-950 [&_input]:text-zinc-900 dark:[&_input]:text-zinc-100 focus:[&_input]:outline-none focus:[&_input]:border-signal-500 dark:focus:[&_input]:border-signal-500">
+                    {{ field }}
+                </div>
+
+                {% if field.errors %}
+                <div class="text-xs font-mono text-red-600 dark:text-red-400 space-y-0.5">
+                    {% for error in field.errors %}
+                        <p>→ {{ error }}</p>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+
+            <button type="submit"
+                    class="w-full py-2.5 px-4 text-xs font-mono font-bold uppercase tracking-wider bg-signal-500 hover:bg-signal-400 text-carbon-950 border border-signal-500 transition-colors">
+                ВОЙТИ →
+            </button>
+        </form>
+
+        <!-- Нижние ссылки -->
+        <div class="px-6 py-4 border-t border-paper-300 dark:border-carbon-800 bg-paper-50 dark:bg-carbon-950/60 space-y-2 text-xs font-mono">
+            <p class="text-zinc-600 dark:text-zinc-400">
+                Нет аккаунта?
+                <a href="{% url 'register' %}" class="font-bold text-signal-600 dark:text-signal-400 hover:underline">
+                    Зарегистрироваться
+                </a>
+            </p>
+            <p>
+                <a href="{% url 'resend_confirmation' %}" class="text-zinc-500 dark:text-zinc-500 hover:text-signal-600 dark:hover:text-signal-400 transition-colors">
+                    Не пришло письмо подтверждения?
+                </a>
+            </p>
+        </div>
+
+    </div>
+</div>
 {% endblock %}

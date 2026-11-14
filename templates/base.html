@@ -1,32 +1,274 @@
+{% load static %}
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="ru" class="dark">
 <head>
     <meta charset="UTF-8">
-    <title>{% block title %}Playlog{% endblock %}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}PLAYLOG // Игровой архив{% endblock %}</title>
+
+    <!-- Предотвращение мерцания темы при загрузке -->
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('playlog_theme') || 'dark';
+            document.documentElement.classList.remove('dark', 'light');
+            document.documentElement.classList.add(savedTheme);
+        })();
+    </script>
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                borderRadius: {
+                    none: '0px',
+                    DEFAULT: '0px',
+                },
+                extend: {
+                    colors: {
+                        // Сбалансированный графит без синевы и без глухого чёрного
+                        carbon: {
+                            950: '#141416', // Основной тёмный фон
+                            900: '#1C1C1F', // Фон карточек и шапки
+                            850: '#242429', // Ховер и вложенные блоки
+                            800: '#2E2E34', // Границы 1px
+                            700: '#3F3F46', // Активные границы
+                        },
+                        // Чистая воздушная светлая тема без грязного серого оттенка
+                        paper: {
+                            50: '#FAFAFA',  // Основной светлый фон
+                            100: '#FFFFFF', // Фон карточек и шапки
+                            200: '#F4F4F5', // Ховер и заглушки обложек
+                            300: '#E4E4E7', // Границы 1px
+                        },
+                        // Зелёный акцент (без изменений)
+                        signal: {
+                            400: '#4ADE80',
+                            500: '#22C55E',
+                            600: '#16A34A',
+                        }
+                    },
+                    fontFamily: {
+                        mono: ['JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Consolas', 'monospace'],
+                        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Принудительно убираем любые скругления */
+        *, *::before, *::after {
+            border-radius: 0 !important;
+        }
+
+        /* Единый стиль для системной кнопки выбора файла */
+        input[type="file"]::file-selector-button {
+            border-radius: 0 !important;
+            border: 1px solid #22C55E !important;
+            background-color: rgba(34, 197, 94, 0.1) !important;
+            color: #16A34A !important;
+            font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', Consolas, monospace;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 8px 14px;
+            margin-right: 12px;
+            cursor: pointer;
+            transition: background-color 0.15s ease, color 0.15s ease;
+        }
+        .dark input[type="file"]::file-selector-button {
+            color: #4ADE80 !important;
+        }
+        input[type="file"]::file-selector-button:hover,
+        input[type="file"]:hover::file-selector-button {
+            background-color: #22C55E !important;
+            color: #141416 !important;
+        }
+
+        /* Лёгкая штриховка для карточек без обложки */
+        .no-cover-grid {
+            background-image: repeating-linear-gradient(
+                -45deg,
+                transparent,
+                transparent 8px,
+                rgba(128, 128, 138, 0.06) 8px,
+                rgba(128, 128, 138, 0.06) 9px
+            );
+        }
+
+        /* Тонкий скроллбар для горизонтальных лент */
+        .game-strip::-webkit-scrollbar {
+            height: 4px;
+        }
+        .game-strip::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .dark .game-strip::-webkit-scrollbar-thumb {
+            background: #2E2E34;
+        }
+        .dark .game-strip::-webkit-scrollbar-thumb:hover {
+            background: #22C55E;
+        }
+        .light .game-strip::-webkit-scrollbar-thumb {
+            background: #E4E4E7;
+        }
+        .light .game-strip::-webkit-scrollbar-thumb:hover {
+            background: #22C55E;
+        }
+    </style>
 </head>
-<body>
-    <nav>
-        <a href="{% url 'home' %}">Playlog</a>
-        <a href="{% url 'home' %}">Каталог</a>
-        {% if user.is_authenticated %}
-            <a href="{% url 'profile' %}">{{ user.username }}</a>
-            <form method="post" action="{% url 'logout' %}" style="display:inline">
-                {% csrf_token %}
-                <button type="submit">Выйти</button>
-            </form>
-        {% else %}
-            <a href="{% url 'login' %}">Войти</a>
-            <a href="{% url 'register' %}">Регистрация</a>
-        {% endif %}
-    </nav>
-    <hr>
+<body class="min-h-screen flex flex-col font-sans bg-paper-50 text-zinc-900 dark:bg-carbon-950 dark:text-zinc-100 antialiased selection:bg-signal-500 selection:text-carbon-950">
+
+    <!-- Основная шапка навигации -->
+    <header class="sticky top-0 z-50 border-b border-paper-300 dark:border-carbon-800 bg-paper-100/95 dark:bg-carbon-900/95 backdrop-blur-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-14 sm:h-16 gap-4">
+
+                <!-- Слева: Логотип + Навигация -->
+                <div class="flex items-center gap-6">
+                    <a href="{% url 'home' %}" class="flex items-center gap-2.5 group flex-shrink-0" title="На главную">
+                        <span class="font-mono font-black text-xs px-2 py-1 bg-signal-500 text-carbon-950 group-hover:bg-signal-400 transition-colors">
+                            PL
+                        </span>
+                        <span class="font-mono font-bold tracking-widest text-base sm:text-lg text-zinc-950 dark:text-white group-hover:text-signal-600 dark:group-hover:text-signal-400 transition-colors">
+                            PLAYLOG
+                        </span>
+                    </a>
+
+                    <nav class="flex items-center gap-1 border-l border-paper-300 dark:border-carbon-800 pl-4 sm:pl-6">
+                        <a href="{% url 'home' %}"
+                           class="px-3 py-1.5 text-xs font-mono font-semibold tracking-wider border transition-colors {% if request.resolver_match.url_name == 'home' %}border-signal-500 bg-signal-500/10 text-signal-600 dark:text-signal-400{% else %}border-transparent text-zinc-600 dark:text-zinc-400 hover:border-paper-300 dark:hover:border-carbon-800 hover:text-zinc-950 dark:hover:text-white{% endif %}">
+                            [01] КАТАЛОГ
+                        </a>
+
+                        {% comment %}
+                        Когда добавите маршрут форума в urls.py, удалите comment/endcomment и проверьте имя маршрута:
+                        <a href="{% url 'forum' %}"
+                           class="px-3 py-1.5 text-xs font-mono font-semibold tracking-wider border transition-colors {% if 'forum' in request.resolver_match.url_name or 'topic' in request.resolver_match.url_name %}border-signal-500 bg-signal-500/10 text-signal-600 dark:text-signal-400{% else %}border-transparent text-zinc-600 dark:text-zinc-400 hover:border-paper-300 dark:hover:border-carbon-800 hover:text-zinc-950 dark:hover:text-white{% endif %}">
+                            [02] ФОРУМ
+                        </a>
+                        {% endcomment %}
+                    </nav>
+                </div>
+
+                <!-- Справа: Переключатель темы + Блок авторизации -->
+                <div class="flex items-center gap-2 sm:gap-3">
+
+                    <!-- Переключатель темы -->
+                    <button type="button"
+                            onclick="toggleTheme()"
+                            class="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-mono border border-paper-300 dark:border-carbon-800 hover:border-signal-500 dark:hover:border-signal-500 bg-paper-50 dark:bg-carbon-950 text-zinc-700 dark:text-zinc-300 transition-colors"
+                            title="Переключить тему">
+                        <span class="w-2 h-2 bg-zinc-400 dark:bg-signal-500"></span>
+                        <span class="hidden sm:inline text-zinc-500">ТЕМА:</span>
+                        <span id="theme-label" class="font-bold text-zinc-900 dark:text-signal-400">DARK</span>
+                    </button>
+
+                    <!-- Авторизация -->
+                    {% if user.is_authenticated %}
+                        <div class="flex items-center gap-2 pl-2 border-l border-paper-300 dark:border-carbon-800">
+                            <a href="{% url 'profile' %}" class="flex items-center gap-2 group pr-1" title="Личный кабинет">
+                                {% if user.profile.avatar %}
+                                    <img src="{{ user.profile.avatar.url }}" alt="{{ user.username }}" class="w-7 h-7 object-cover border border-signal-500">
+                                {% else %}
+                                    <div class="w-7 h-7 bg-signal-500/15 border border-signal-500 text-signal-600 dark:text-signal-400 font-mono font-bold flex items-center justify-center text-xs">
+                                        {{ user.username|slice:":1"|upper }}
+                                    </div>
+                                {% endif %}
+                                <span class="hidden sm:inline font-mono text-xs font-semibold text-zinc-800 dark:text-zinc-200 group-hover:text-signal-600 dark:group-hover:text-signal-400 transition-colors truncate max-w-[130px]">
+                                    @{{ user.username }}
+                                </span>
+                            </a>
+
+                            <form method="post" action="{% url 'logout' %}" class="inline">
+                                {% csrf_token %}
+                                <button type="submit"
+                                        class="px-2.5 py-1.5 text-xs font-mono font-semibold border border-paper-300 dark:border-carbon-800 hover:border-red-500 dark:hover:border-red-500 bg-paper-50 dark:bg-carbon-950 text-zinc-600 dark:text-zinc-400 hover:text-red-600 dark:hover:text-red-400 transition-colors">
+                                    ВЫХОД
+                                </button>
+                            </form>
+                        </div>
+                    {% else %}
+                        <div class="flex items-center gap-2 pl-2 border-l border-paper-300 dark:border-carbon-800">
+                            <a href="{% url 'login' %}"
+                               class="px-3 py-1.5 text-xs font-mono font-semibold border border-paper-300 dark:border-carbon-800 hover:border-signal-500 text-zinc-700 dark:text-zinc-300 hover:text-signal-600 dark:hover:text-signal-400 transition-colors">
+                                ВОЙТИ
+                            </a>
+                            <a href="{% url 'register' %}"
+                               class="px-3 py-1.5 text-xs font-mono font-bold bg-signal-500 hover:bg-signal-400 text-carbon-950 border border-signal-500 transition-colors">
+                                РЕГИСТРАЦИЯ
+                            </a>
+                        </div>
+                    {% endif %}
+
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Системные уведомления Django -->
     {% if messages %}
-        <ul class="messages">
-            {% for message in messages %}
-            <li class="{{ message.tags }}">{{ message }}</li>
-            {% endfor %}
-        </ul>
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4 space-y-2 w-full">
+        {% for message in messages %}
+        <div class="flex items-center justify-between px-4 py-2.5 border text-xs font-mono {% if 'error' in message.tags %}bg-red-500/10 border-red-500 text-red-700 dark:text-red-300{% elif 'success' in message.tags %}bg-signal-500/10 border-signal-500 text-signal-700 dark:text-signal-300{% else %}bg-zinc-500/10 border-zinc-500 text-zinc-700 dark:text-zinc-300{% endif %}" role="alert">
+            <div class="flex items-center gap-2.5">
+                <span class="px-1.5 py-0.5 text-[10px] font-bold {% if 'error' in message.tags %}bg-red-500 text-white{% elif 'success' in message.tags %}bg-signal-500 text-carbon-950{% else %}bg-zinc-600 text-white{% endif %}">OK</span>
+                <span>{{ message }}</span>
+            </div>
+            <button type="button" onclick="this.parentElement.remove()" class="text-xs opacity-70 hover:opacity-100 ml-4 font-bold">✕</button>
+        </div>
+        {% endfor %}
+    </div>
     {% endif %}
-    {% block content %}{% endblock %}
+
+    <!-- Основной контент -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Минималистичный футер -->
+    <footer class="mt-auto border-t border-paper-300 dark:border-carbon-800 bg-paper-100 dark:bg-carbon-900 py-4">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-center text-xs font-mono text-zinc-500 dark:text-zinc-400">
+            <div class="flex items-center gap-2">
+                <span class="w-1.5 h-1.5 bg-signal-500"></span>
+                <span class="font-bold text-zinc-800 dark:text-zinc-200">PLAYLOG</span>
+                <span>// ИГРОВОЙ АРХИВ И СООБЩЕСТВО</span>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Скрипты темы и прокрутки -->
+    <script>
+        function updateThemeUI(theme) {
+            const label = document.getElementById('theme-label');
+            if (label) {
+                label.textContent = theme === 'dark' ? 'DARK' : 'LIGHT';
+            }
+        }
+
+        function toggleTheme() {
+            const isDark = document.documentElement.classList.contains('dark');
+            const newTheme = isDark ? 'light' : 'dark';
+            document.documentElement.classList.remove('dark', 'light');
+            document.documentElement.classList.add(newTheme);
+            localStorage.setItem('playlog_theme', newTheme);
+            updateThemeUI(newTheme);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const currentTheme = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+            updateThemeUI(currentTheme);
+        });
+
+        function scrollStrip(stripId, direction) {
+            const strip = document.getElementById(stripId);
+            if (!strip) return;
+            strip.scrollBy({ left: 320 * direction, behavior: 'smooth' });
+        }
+    </script>
 </body>
 </html>
