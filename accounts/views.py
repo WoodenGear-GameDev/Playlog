@@ -3,13 +3,18 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect, render
 from django.utils.encoding import force_str
 from django.utils.http import urlsafe_base64_decode
-import secrets
-from urllib.parse import urlencode
-
+from django.contrib.auth import views as auth_views
+from django.contrib.messages.views import SuccessMessageMixin
+from django.urls import reverse, reverse_lazy
 from django.contrib import messages
 from django.db import IntegrityError
 from django.urls import reverse
 from django.views.decorators.http import require_POST
+from django.core.paginator import Paginator
+from django.shortcuts import get_object_or_404
+
+import secrets
+from urllib.parse import urlencode
 
 from .steam_openid import build_login_url, verify_assertion
 
@@ -19,14 +24,8 @@ from .confirmation import (
     send_confirmation_email,
 )
 from .forms import AvatarForm, RegisterForm, ResendConfirmationForm, UsernameForm
-
-from django.core.paginator import Paginator
-
 from catalog.models import Game
-
 from .models import LibraryGame, Profile
-
-from django.shortcuts import get_object_or_404
 
 
 def register(request):
@@ -194,3 +193,24 @@ def library_open(request, pk):
     page_number = request.GET.get('page', '')
     suffix = f'?page={page_number}' if page_number.isdigit() else ''
     return redirect(f"{reverse('profile')}{suffix}#library")
+
+class PasswordChange(SuccessMessageMixin, auth_views.PasswordChangeView):
+    template_name = 'accounts/password_change.html'
+    success_url = reverse_lazy('profile')
+    success_message = 'Пароль изменён.'
+
+class PasswordResetRequest(SuccessMessageMixin, auth_views.PasswordResetView):
+    template_name = 'accounts/password_reset_form.html'
+    email_template_name = 'accounts/email/password_reset_email.txt'
+    subject_template_name = 'accounts/email/password_reset_subject.txt'
+    success_url = reverse_lazy('login')
+    success_message = (
+        'Если такой адрес зарегистрирован, мы отправили на него письмо '
+        'со ссылкой для сброса пароля.'
+    )
+
+
+class PasswordResetConfirm(SuccessMessageMixin, auth_views.PasswordResetConfirmView):
+    template_name = 'accounts/password_reset_confirm.html'
+    success_url = reverse_lazy('login')
+    success_message = 'Пароль изменён. Войдите с новым паролем.'
