@@ -14,6 +14,18 @@ import os
 
 from dotenv import load_dotenv
 from pathlib import Path
+import sys
+
+# На некоторых хостингах системная SQLite старше версии 3.31, которую требует
+# Django 5.2. Там, где установлен pysqlite3-binary (на сервере), используем его.
+# Локально пакета нет, и этот блок ничего не делает.
+try:
+    import pysqlite3  # type: ignore
+except ImportError:
+    pass
+else:
+    sys.modules['sqlite3'] = pysqlite3
+    sys.modules['sqlite3.dbapi2'] = pysqlite3.dbapi2
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
