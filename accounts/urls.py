@@ -20,4 +20,11 @@ urlpatterns = [
     path('steam/callback/', views.steam_link_callback, name='steam_callback'),
     path('steam/unlink/', views.steam_unlink, name='steam_unlink'),
     path('library/<int:pk>/open/', views.library_open, name='library_open'),
+    path('password/change/', views.PasswordChange.as_view(), name='password_change'),
+    path('password/reset/', views.PasswordResetRequest.as_view(), name='password_reset'),
+    path(
+        'password/reset/<uidb64>/<token>/',
+        views.PasswordResetConfirm.as_view(),
+        name='password_reset_confirm',
+    ),
 ]
