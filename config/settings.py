@@ -26,10 +26,29 @@ load_dotenv(BASE_DIR / '.env')
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'django-insecure-yu=yn76n=3ww7e9u5gz=#tpjizm5a!#^f_3v7c^5%+#07unu9j'
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+def env_bool(name, default=False):
+    value = os.environ.get(name)
+    if value is None:
+        return default
+    return value.strip().lower() in ('1', 'true', 'yes', 'on')
 
-ALLOWED_HOSTS = []
+
+def env_list(name):
+    return [item.strip() for item in os.environ.get(name, '').split(',') if item.strip()]
+
+
+# По умолчанию режим отладки выключен: его включают только явно (в .env)
+DEBUG = env_bool('DEBUG', False)
+
+SECRET_KEY = os.environ.get('SECRET_KEY', '').strip()
+if not SECRET_KEY:
+    if DEBUG:
+        SECRET_KEY = 'dev-only-insecure-key'
+    else:
+        raise RuntimeError('Задайте SECRET_KEY в файле .env')
+
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost'] + env_list('ALLOWED_HOSTS')
+CSRF_TRUSTED_ORIGINS = env_list('CSRF_TRUSTED_ORIGINS')
 
 
 # Application definition
@@ -117,12 +136,6 @@ USE_I18N = True
 
 USE_TZ = True
 
-
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/5.2/howto/static-files/
-
-STATIC_URL = 'static/'
-
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
@@ -138,8 +151,41 @@ DEFAULT_FROM_EMAIL = 'Playlog <noreply@playlog.local>'
 # Срок жизни ссылки подтверждения (в секундах): 24 часа
 PASSWORD_RESET_TIMEOUT = 60 * 60 * 24
 
+STATIC_URL = 'static/'
+STATIC_ROOT = os.environ.get('STATIC_ROOT') or BASE_DIR / 'staticfiles'
 MEDIA_URL = 'media/'
-MEDIA_ROOT = BASE_DIR / 'media'
+MEDIA_ROOT = os.environ.get('MEDIA_ROOT') or BASE_DIR / 'media'
+
+# Включается на сервере, когда HTTPS проверен (см. этап P3)
+if env_bool('HTTPS_ENABLED', False):
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_SSL_REDIRECT = env_bool('SECURE_SSL_REDIRECT', False)
+
+# Журнал ошибок в файл: с DEBUG=False иначе их негде увидеть
+LOG_DIR = os.environ.get('LOG_DIR', '').strip()
+if LOG_DIR:
+    os.makedirs(LOG_DIR, exist_ok=True)
+    LOGGING = {
+        'version': 1,
+        'disable_existing_loggers': False,
+        'formatters': {
+            'plain': {'format': '%(asctime)s %(levelname)s %(name)s: %(message)s'},
+        },
+        'handlers': {
+            'file': {
+                'class': 'logging.handlers.RotatingFileHandler',
+                'filename': os.path.join(LOG_DIR, 'django.log'),
+                'maxBytes': 1_000_000,
+                'backupCount': 3,
+                'encoding': 'utf-8',
+                'formatter': 'plain',
+            },
+        },
+        'loggers': {
+            'django': {'handlers': ['file'], 'level': 'WARNING', 'propagate': True},
+        },
+    }
 
 EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '').strip()
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '').replace(' ', '')
