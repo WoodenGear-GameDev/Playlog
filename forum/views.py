@@ -76,7 +76,7 @@ def topic_create(request, game_pk):
 
 def topic_detail(request, pk):
     topic = get_object_or_404(
-        Topic.objects.select_related('game', 'author'), pk=pk
+        Topic.objects.select_related('game', 'author__profile'), pk=pk
     )
 
     if request.method == 'POST':
@@ -103,7 +103,7 @@ def topic_detail(request, pk):
         form = PostForm()
         reply_target = _reply_target(topic.posts.all(), request.GET.get('reply'))
 
-    posts = topic.posts.select_related('author', 'reply_to__author').prefetch_related('images')
+    posts = topic.posts.select_related('author__profile', 'reply_to__author').prefetch_related('images')
     page = Paginator(posts, POSTS_PER_PAGE).get_page(request.GET.get('page'))
     return render(request, 'forum/topic_detail.html', {
         'topic': topic,
@@ -205,7 +205,7 @@ def game_chat(request, game_pk):
         form = PostForm()
         reply_target = _reply_target(chat_posts, request.GET.get('reply'))
 
-    posts = chat_posts.select_related('author', 'reply_to__author').prefetch_related('images')
+    posts = chat_posts.select_related('author__profile', 'reply_to__author').prefetch_related('images')
     paginator = Paginator(posts, CHAT_PER_PAGE)
     # Без номера страницы открываем последнюю: новые сообщения внизу
     page = paginator.get_page(request.GET.get('page') or paginator.num_pages)
@@ -245,7 +245,7 @@ def _updates_response(request, posts):
 
     batch = list(
         posts.filter(pk__gt=int(after))
-        .select_related('author', 'reply_to__author')
+        .select_related('author__profile', 'reply_to__author')
         .prefetch_related('images')
         .order_by('pk')[:UPDATES_BATCH + 1]
     )
