@@ -1,0 +1,8 @@
+{% for invite in invites %}
+    {% include 'forum/_invite.html' %}
+{% empty %}
+<div class="border border-paper-300 dark:border-carbon-800 bg-paper-100 dark:bg-carbon-900 p-10 text-center font-mono space-y-2">
+    <p class="text-xs uppercase tracking-widest text-zinc-400 dark:text-zinc-500">[NO_ACTIVE_INVITES]</p>
+    <p class="text-sm text-zinc-600 dark:text-zinc-400">Активных приглашений нет. Создайте своё!</p>
+</div>
+{% endfor %}

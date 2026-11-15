@@ -5,6 +5,7 @@ from . import views
 urlpatterns = [
     path('', views.index, name='home'),
     path('games/<int:pk>/', views.game_detail, name='game_detail'),
+    path('games/<int:pk>/achievements/', views.game_achievements_modal, name='game_achievements_modal'),
     path('games/steam/search/', views.steam_search_results, name='steam_search_results'),
     path('games/steam/<int:steam_app_id>/', views.steam_game_import, name='steam_game_import'),
     path('games/<int:pk>/rate/', views.rate_game, name='rate_game'),
@@ -12,4 +13,5 @@ urlpatterns = [
     path('games/<int:pk>/steam-resync/', views.game_steam_resync, name='game_steam_resync'),
     path('games/<int:game_pk>/reviews/<int:pk>/vote/', views.vote_review, name='vote_review'),
     path('games/<int:game_pk>/reviews/<int:pk>/delete/', views.delete_review, name='delete_review'),
+    path('games/<int:pk>/refresh/', views.refresh_game, name='refresh_game'),
 ]

@@ -12,6 +12,7 @@ from django.urls import reverse
 from django.views.decorators.http import require_POST
 from django.core.paginator import Paginator
 from django.shortcuts import get_object_or_404
+from django.http import HttpResponseForbidden, Http404
 
 import secrets
 import time
@@ -26,10 +27,12 @@ from .confirmation import (
     send_confirmation_email,
 )
 from .forms import AvatarForm, RegisterForm, ResendConfirmationForm, UsernameForm, DeleteAccountForm
-from catalog.models import Game
+from catalog.models import Achievement, Game, Rating
+from forum.models import GameInvite, Post, Topic
 from .models import LibraryGame, Profile
 from .deletion import DeletionError, check_can_delete, content_summary, delete_user_account
 from .self_delete import read_token, send_delete_email
+from .library_sync import LibrarySyncError, cooldown_left, describe_stats, sync_library
 
 DELETE_EMAIL_COOLDOWN = 60
 
@@ -87,7 +90,11 @@ def resend_confirmation(request):
 def profile(request):
     profile, _ = Profile.objects.get_or_create(user=request.user)
     page = Paginator(profile.library.all(), 48).get_page(request.GET.get('page'))
-    return render(request, 'accounts/profile.html', {'profile': profile, 'page': page})
+    return render(request, 'accounts/profile.html', {
+        'profile': profile,
+        'page': page,
+        'library_cooldown': cooldown_left(profile),
+    })
 
 def activate(request, uidb64, token):
     User = get_user_model()
@@ -307,4 +314,165 @@ def account_delete_confirm(request, token):
     return render(request, 'accounts/account_delete_confirm.html', {
         'mode': mode,
         'summary': content_summary(user),
+    })
+
+@login_required
+@require_POST
+def library_refresh(request):
+    profile, _ = Profile.objects.get_or_create(user=request.user)
+    try:
+        stats = sync_library(profile)
+    except LibrarySyncError as exc:
+        messages.error(request, str(exc))
+    else:
+        messages.success(request, describe_stats(stats))
+    return redirect(f"{reverse('profile')}#library")
+
+@login_required
+@require_POST
+def profile_privacy(request):
+    profile, _ = Profile.objects.get_or_create(user=request.user)
+    profile.show_steam = request.POST.get('show_steam') == '1'
+    profile.save(update_fields=['show_steam'])
+    if profile.show_steam:
+        messages.success(request, 'Steam-профиль и библиотека теперь видны другим пользователям.')
+    else:
+        messages.success(request, 'Steam-профиль и библиотека скрыты от других пользователей.')
+    return redirect('profile')
+
+PUBLIC_LIBRARY_PER_PAGE = 24
+
+
+def public_profile(request, pk):
+    owner = get_object_or_404(get_user_model(), pk=pk, is_active=True)
+    owner_profile = Profile.objects.filter(user=owner).first()
+    is_own = request.user.is_authenticated and request.user.pk == owner.pk
+
+    stats = {
+        'ratings': Rating.objects.filter(user=owner).count(),
+        'reviews': Rating.objects.filter(user=owner).exclude(text='').count(),
+        'topics': Topic.objects.filter(author=owner, is_deleted=False).count(),
+        'posts': Post.objects.filter(author=owner, is_deleted=False).count(),
+    }
+    ratings = list(
+        Rating.objects.filter(user=owner)
+        .select_related('game')
+        .order_by('-updated_at', '-pk')[:10]
+    )
+    topics = list(
+        Topic.objects.filter(author=owner, is_deleted=False)
+        .select_related('game')
+        .order_by('-created_at', '-pk')[:10]
+    )
+    invites = list(
+        GameInvite.objects.active().filter(author=owner).select_related('game')
+    )
+
+    steam_public = bool(
+        owner_profile and owner_profile.steam_id and owner_profile.show_steam
+    )
+    library_page = None
+    library_entries = []
+    if steam_public:
+        library_page = Paginator(
+            owner_profile.library.all(), PUBLIC_LIBRARY_PER_PAGE
+        ).get_page(request.GET.get('page'))
+        library_entries = list(library_page)
+        ids = [entry.steam_app_id for entry in library_entries]
+        catalog = {g.steam_app_id: g for g in Game.objects.filter(steam_app_id__in=ids)}
+        for entry in library_entries:
+            entry.catalog_game = catalog.get(entry.steam_app_id)
+
+    return render(request, 'accounts/public_profile.html', {
+        'owner': owner,
+        'owner_profile': owner_profile,
+        'is_own': is_own,
+        'stats': stats,
+        'ratings': ratings,
+        'topics': topics,
+        'invites': invites,
+        'steam_public': steam_public,
+        'library_page': library_page,
+        'library_entries': library_entries,
+    })
+
+
+def user_game_achievements(request, user_pk, steam_app_id):
+    owner = get_object_or_404(get_user_model(), pk=user_pk, is_active=True)
+    owner_profile = Profile.objects.filter(user=owner).first()
+    if not owner_profile:
+        raise Http404('Профиль не найден.')
+
+    is_own = request.user.is_authenticated and request.user.pk == owner.pk
+    if not is_own and not (owner_profile.steam_id and owner_profile.show_steam):
+        return HttpResponseForbidden('Пользователь скрыл библиотеку и достижения.')
+
+    library_entry = LibraryGame.objects.filter(
+        profile=owner_profile, steam_app_id=steam_app_id
+    ).first()
+
+    game = Game.objects.filter(steam_app_id=steam_app_id).first()
+    if not game:
+        from catalog.sync import sync_game
+        try:
+            sync_game(steam_app_id)
+            game = Game.objects.filter(steam_app_id=steam_app_id).first()
+        except Exception:
+            pass
+
+    if game and not game.achievements.exists():
+        from catalog.sync import sync_game
+        try:
+            sync_game(steam_app_id)
+        except Exception:
+            pass
+
+    if game and owner_profile.steam_id:
+        unlocked_count = owner_profile.unlocked_achievements.filter(game=game).count()
+        if unlocked_count == 0 and library_entry and library_entry.achievements_unlocked > 0:
+            from catalog.steam_service import fetch_player_unlocked_achievements
+            try:
+                unlocked_set, _, _ = fetch_player_unlocked_achievements(
+                    owner_profile.steam_id, steam_app_id
+                )
+                if unlocked_set:
+                    user_achs = Achievement.objects.filter(
+                        game=game, api_name__in=unlocked_set
+                    )
+                    if user_achs.exists():
+                        owner_profile.unlocked_achievements.add(*user_achs)
+            except Exception:
+                pass
+
+    achievements = []
+    unlocked_pks = set()
+    if game:
+        achievements = list(game.achievements.all())
+        unlocked_pks = set(
+            owner_profile.unlocked_achievements.filter(game=game).values_list('pk', flat=True)
+        )
+
+    for ach in achievements:
+        ach.is_unlocked = ach.pk in unlocked_pks
+
+    achievements.sort(key=lambda a: (not a.is_unlocked, a.global_percent))
+
+    unlocked_total = len(unlocked_pks) if unlocked_pks else (library_entry.achievements_unlocked if library_entry else 0)
+    ach_total = len(achievements) if achievements else (library_entry.achievements_total if library_entry else 0)
+    locked_total = max(0, ach_total - unlocked_total)
+    rare_total = sum(1 for a in achievements if a.is_rare or a.is_ultra_rare)
+    percent = round((unlocked_total / ach_total) * 100) if ach_total else 0
+
+    return render(request, 'accounts/_user_achievements_modal.html', {
+        'owner': owner,
+        'owner_profile': owner_profile,
+        'game': game,
+        'library_entry': library_entry,
+        'achievements': achievements,
+        'unlocked_total': unlocked_total,
+        'locked_total': locked_total,
+        'rare_total': rare_total,
+        'ach_total': ach_total,
+        'percent': percent,
+        'is_user_progress': True,
     })

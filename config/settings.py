@@ -214,3 +214,5 @@ else:
     # Без .env письма печатаются в терминал
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
     DEFAULT_FROM_EMAIL = 'Playlog <noreply@playlog.local>'
+
+DATA_UPLOAD_MAX_NUMBER_FILES = 10

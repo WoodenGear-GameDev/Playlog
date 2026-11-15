@@ -24,6 +24,15 @@ class Profile(models.Model):
     avatar = models.ImageField(
     'Аватар', upload_to=avatar_upload_path, blank=True
     )
+    library_synced_at = models.DateTimeField(
+        'Библиотека обновлена', null=True, blank=True
+    )
+    library_sync_requested_at = models.DateTimeField(
+        'Последний запрос обновления', null=True, blank=True
+    )
+    show_steam = models.BooleanField(
+        'Показывать Steam и библиотеку другим', default=False
+    )
 
     class Meta:
         verbose_name = 'Профиль'

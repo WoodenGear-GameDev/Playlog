@@ -32,7 +32,9 @@ class Game(models.Model):
     steam_review_desc = models.CharField('Оценка отзывов Steam', max_length=100, blank=True)
     steam_review_percent = models.PositiveSmallIntegerField('Положительных отзывов (%)', null=True, blank=True)
     steam_review_total = models.PositiveIntegerField('Всего отзывов Steam', default=0)
-    steam_synced_at = models.DateTimeField('Синхронизировано со Steam', null=True, blank=True)
+    steam_synced_at = models.DateTimeField(
+        'Обновлено из Steam', null=True, blank=True, editable=False
+    )
 
     class Meta:
         verbose_name = 'Игра'

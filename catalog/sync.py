@@ -1,3 +1,4 @@
+from dataclasses import dataclass, field
 import logging
 from django.db import transaction
 from django.utils import timezone
@@ -13,6 +14,30 @@ from .steam_service import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class SyncResult:
+    ok: bool
+    changed: list = field(default_factory=list)
+    missing: list = field(default_factory=list)
+    error: str = ''
+
+    def __bool__(self):
+        return self.ok
+
+
+def describe_result(result):
+    """Текст сообщения для администратора."""
+    if not result.ok:
+        return result.error
+    if result.changed:
+        text = 'Обновлено: ' + ', '.join(result.changed) + '.'
+    else:
+        text = 'Данные уже актуальны.'
+    if result.missing:
+        text += ' Steam не прислал: ' + ', '.join(result.missing) + ' (оставлены прежние значения).'
+    return text
 
 
 def sync_game(game, overwrite=False):
@@ -84,7 +109,12 @@ def sync_game(game, overwrite=False):
             game.achievements.all().delete()
 
     logger.info('Successfully synced game %s with %d achievements and reviews', game.title, len(schema_achievements))
-    return True
+    changed_items = ['метаданные']
+    if schema_achievements:
+        changed_items.append(f'{len(schema_achievements)} достижений')
+    if review_summary.get('total'):
+        changed_items.append('отзывы Steam')
+    return SyncResult(True, changed=changed_items)
 
 
 def resync_game_steam(game):

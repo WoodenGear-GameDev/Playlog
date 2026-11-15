@@ -30,9 +30,4 @@ class Migration(migrations.Migration):
             name='steam_review_total',
             field=models.PositiveIntegerField(default=0, verbose_name='Всего отзывов Steam'),
         ),
-        migrations.AddField(
-            model_name='game',
-            name='steam_synced_at',
-            field=models.DateTimeField(blank=True, null=True, verbose_name='Синхронизировано со Steam'),
-        ),
     ]

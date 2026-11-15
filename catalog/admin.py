@@ -21,9 +21,17 @@ class CategoryAdmin(admin.ModelAdmin):
 
 @admin.register(Game)
 class GameAdmin(admin.ModelAdmin):
-    list_display = ('__str__', 'steam_app_id', 'steam_review_desc', 'steam_review_percent', 'release_date')
+    list_display = (
+        '__str__',
+        'steam_app_id',
+        'steam_review_desc',
+        'steam_review_percent',
+        'release_date',
+        'steam_synced_at',
+    )
     search_fields = ('title', 'steam_app_id')
     filter_horizontal = ('categories',)
+    readonly_fields = ('steam_synced_at',)
     inlines = [AchievementInline]
     actions = ['refresh_from_steam']
 
@@ -32,9 +40,14 @@ class GameAdmin(admin.ModelAdmin):
         if not change:
             try:
                 sync_game(form.instance)
-                self.message_user(request, f'Данные и достижения игры «{form.instance.title}» успешно загружены из Steam.')
+                self.message_user(
+                    request,
+                    f'Данные и достижения игры «{form.instance.title}» успешно загружены из Steam.',
+                )
             except SteamAPIError as e:
-                self.message_user(request, f'Ошибка загрузки данных из Steam: {e}', level=messages.ERROR)
+                self.message_user(
+                    request, f'Ошибка загрузки данных из Steam: {e}', level=messages.ERROR
+                )
 
     @admin.action(description='Обновить из Steam (перезаписать поля и достижения)')
     def refresh_from_steam(self, request, queryset):
@@ -48,9 +61,13 @@ class GameAdmin(admin.ModelAdmin):
                 errors.append(f'{game}: {e}')
 
         if success_count:
-            self.message_user(request, f'Успешно обновлено игр: {success_count} из {queryset.count()}.')
+            self.message_user(
+                request, f'Успешно обновлено игр: {success_count} из {queryset.count()}.'
+            )
         if errors:
-            self.message_user(request, f'Ошибки при обновлении: {"; ".join(errors)}', level=messages.ERROR)
+            self.message_user(
+                request, f'Ошибки при обновлении: {"; ".join(errors)}', level=messages.ERROR
+            )
 
 @admin.register(Rating)
 class RatingAdmin(admin.ModelAdmin):

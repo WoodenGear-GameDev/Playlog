@@ -1,0 +1,79 @@
+<script>
+(function () {
+    var box = document.getElementById('invites-list');
+    if (!box) return;
+
+    var url = box.dataset.updatesUrl;
+    var version = box.dataset.version || '';
+    var errors = 0;
+    var busy = false;
+    var timer = null;
+
+    function pad(n) { return (n < 10 ? '0' : '') + n; }
+
+    // Обратный отсчёт: считается в браузере по времени окончания
+    function tick() {
+        var now = Math.floor(Date.now() / 1000);
+        box.querySelectorAll('[data-expires]').forEach(function (el) {
+            var left = parseInt(el.dataset.expires, 10) - now;
+            if (left <= 0) {
+                el.textContent = 'ИСТЕКЛО';
+                return;
+            }
+            var h = Math.floor(left / 3600);
+            var m = Math.floor((left % 3600) / 60);
+            var s = left % 60;
+            el.textContent = 'ОСТАЛОСЬ ' + h + ':' + pad(m) + ':' + pad(s);
+        });
+    }
+    setInterval(tick, 1000);
+    tick();
+
+    // Опрос сервера: список заменяется целиком, только если он изменился
+    async function poll() {
+        if (busy) return;
+        busy = true;
+        var next = document.hidden ? 60000 : 10000;
+        try {
+            var response = await fetch(url + '?v=' + encodeURIComponent(version), {
+                credentials: 'same-origin',
+                cache: 'no-store',
+                headers: {'X-Requested-With': 'XMLHttpRequest'}
+            });
+            if (!response.ok) throw new Error('HTTP ' + response.status);
+            var data = await response.json();
+            if (data.changed) {
+                box.innerHTML = data.html;
+                version = data.version;
+                tick();
+            }
+            errors = 0;
+        } catch (e) {
+            errors += 1;
+            next = Math.min(120000, 10000 * Math.pow(2, errors));
+        } finally {
+            busy = false;
+            timer = setTimeout(poll, next);
+        }
+    }
+
+    document.addEventListener('visibilitychange', function () {
+        if (!document.hidden) {
+            clearTimeout(timer);
+            poll();
+        }
+    });
+    timer = setTimeout(poll, 10000);
+
+    // Кнопка «Копировать»
+    box.addEventListener('click', function (e) {
+        var btn = e.target.closest('[data-copy]');
+        if (!btn || !navigator.clipboard) return;
+        var original = btn.textContent;
+        navigator.clipboard.writeText(btn.dataset.copy).then(function () {
+            btn.textContent = 'СКОПИРОВАНО';
+            setTimeout(function () { btn.textContent = original; }, 1500);
+        });
+    });
+})();
+</script>
