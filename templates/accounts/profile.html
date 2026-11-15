@@ -52,6 +52,11 @@
                     <span>РЕДАКТИРОВАТЬ ПРОФИЛЬ</span>
                     <span>→</span>
                 </a>
+                <a href="{% url 'user_profile' user.pk %}"
+                   class="inline-flex items-center gap-2 px-4 py-2 text-xs font-mono font-bold uppercase tracking-wider border border-paper-300 dark:border-carbon-800 hover:border-signal-500 bg-paper-100 dark:bg-carbon-900 text-zinc-700 dark:text-zinc-300 hover:text-signal-600 dark:hover:text-signal-400 transition-colors">
+                    <span>КАК МЕНЯ ВИДЯТ ДРУГИЕ</span>
+                    <span>→</span>
+                </a>
             </div>
         </section>
 
