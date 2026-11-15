@@ -219,7 +219,9 @@ def library_open(request, pk):
     if game:
         return redirect('game_detail', pk=game.pk)
 
-    return redirect('steam_game_import', steam_app_id=entry.steam_app_id)
+    url = reverse('steam_game_import', kwargs={'steam_app_id': entry.steam_app_id})
+    params = urlencode({'title': entry.display_name, 'img': entry.header_image})
+    return redirect(f"{url}?{params}")
 
 class PasswordChange(SuccessMessageMixin, auth_views.PasswordChangeView):
     template_name = 'accounts/password_change.html'

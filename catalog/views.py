@@ -101,23 +101,20 @@ def steam_game_import(request, steam_app_id):
     if game:
         return redirect('game_detail', pk=game.pk)
 
-    details = fetch_app_details(steam_app_id)
-    if not details:
-        messages.error(request, 'Не удалось получить данные об игре из Steam.')
-        return redirect('home')
-
     if request.method == 'POST':
-        game = Game.objects.create(
-            steam_app_id=steam_app_id,
-            title=details.get('title', f'Steam app {steam_app_id}'),
-        )
-        sync_game(game, overwrite=True)
+        game = Game.objects.create(steam_app_id=steam_app_id)
+        if not sync_game(game, overwrite=True):
+            game.delete()
+            messages.error(request, 'Не удалось получить данные об игре из Steam. Попробуйте позже.')
+            return redirect('home')
+
         messages.success(request, f'Игра «{game.title}» успешно добавлена в каталог.')
         return redirect('game_detail', pk=game.pk)
 
     return render(request, 'catalog/game_add_confirm.html', {
-        'details': details,
         'steam_app_id': steam_app_id,
+        'title': request.GET.get('title', ''),
+        'header_image': request.GET.get('img', ''),
     })
 
 

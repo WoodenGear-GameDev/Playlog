@@ -3,15 +3,10 @@ from .steam_service import fetch_app_details
 
 
 def sync_game(game, overwrite=False):
-    """Заполняет поля игры данными из Steam. Возвращает True при успехе.
-
-    По умолчанию заполняются только пустые поля, чтобы не затирать
-    ручные правки. overwrite=True перезаписывает всё.
-    """
+    """Заполняет поля игры данными из Steam. Возвращает True при успехе."""
     try:
         data = fetch_app_details(game.steam_app_id)
     except Exception:
-        # Сбой Steam не должен мешать работе админки
         return False
     if not data:
         return False

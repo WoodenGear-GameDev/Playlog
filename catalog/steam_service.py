@@ -4,6 +4,14 @@ import requests
 
 logger = logging.getLogger(__name__)
 
+STEAM_HEADERS = {
+    'User-Agent': (
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
+        '(KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36'
+    ),
+    'Accept-Language': 'ru-RU,ru;q=0.9,en;q=0.8',
+}
+
 MONTHS = {
     'янв': 1, 'фев': 2, 'мар': 3, 'апр': 4, 'май': 5, 'мая': 5,
     'июн': 6, 'июл': 7, 'авг': 8, 'сен': 9, 'окт': 10, 'ноя': 11, 'дек': 12,
@@ -43,20 +51,11 @@ def _parse_release_date(raw_date: str) -> datetime.date | None:
 
 
 def fetch_app_details(app_id):
-    """Запрашивает данные об игре из Steam Store API:
-
-    {
-        'title': str,
-        'description': str,
-        'release_date': datetime.date или None,
-        'header_image': str (URL),
-        'categories': list[str] (названия жанров Steam),
-    }
-    """
+    """Запрашивает данные об игре из Steam Store API."""
     url = 'https://store.steampowered.com/api/appdetails'
     params = {'appids': app_id, 'l': 'russian', 'cc': 'ru'}
     try:
-        response = requests.get(url, params=params, timeout=10)
+        response = requests.get(url, params=params, headers=STEAM_HEADERS, timeout=10)
         response.raise_for_status()
         data = response.json()
     except Exception as e:
@@ -86,18 +85,14 @@ def fetch_app_details(app_id):
 
 
 def search_steam_games(query: str, limit: int = 12):
-    """Ищет игры в Steam Store Search API.
-
-    Возвращает список словарей:
-        [{'steam_app_id': int, 'title': str, 'header_image': str}, ...]
-    """
+    """Ищет игры в Steam Store Search API."""
     if not query or not query.strip():
         return []
 
     url = 'https://store.steampowered.com/api/storesearch/'
     params = {'term': query.strip(), 'l': 'russian', 'cc': 'ru'}
     try:
-        response = requests.get(url, params=params, timeout=5)
+        response = requests.get(url, params=params, headers=STEAM_HEADERS, timeout=5)
         response.raise_for_status()
         data = response.json()
     except Exception as e:
@@ -117,4 +112,3 @@ def search_steam_games(query: str, limit: int = 12):
             'header_image': item.get('tiny_image', ''),
         })
     return results
-
