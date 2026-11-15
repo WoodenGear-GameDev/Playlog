@@ -234,7 +234,24 @@
             </div>
             <script>
             document.addEventListener('DOMContentLoaded', () => {
-                document.getElementById('initial-steam-sync-form')?.submit();
+                const form = document.getElementById('initial-steam-sync-form');
+                if (form) {
+                    const formData = new FormData(form);
+                    fetch(form.action, {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                        }
+                    })
+                    .then(res => res.json())
+                    .then(data => {
+                        window.location.reload();
+                    })
+                    .catch(() => {
+                        window.location.reload();
+                    });
+                }
             });
             </script>
         {% elif library.status == 'syncing' %}

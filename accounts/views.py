@@ -13,7 +13,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 from django.core.paginator import Paginator
 from django.shortcuts import get_object_or_404
-from django.http import HttpResponseForbidden, Http404
+from django.http import HttpResponseForbidden, Http404, JsonResponse
 
 import secrets
 import time
@@ -91,12 +91,6 @@ def profile(request):
     profile, _ = Profile.objects.get_or_create(user=request.user)
     steam_account = getattr(request.user, 'steam_account', None)
     library = getattr(steam_account, 'library', None) if steam_account else None
-    
-    # Автоматическая синхронизация при первом открытии профиля после привязки Steam
-    if library and library.status == SteamLibrary.Status.NOT_SYNCED:
-        sync_steam_account_library(library)
-        library.refresh_from_db()
-
     library_games = []
     page = None
     remaining_cooldown = 0
@@ -218,6 +212,8 @@ def steam_link_callback(request):
 def steam_library_sync(request):
     steam_account = getattr(request.user, 'steam_account', None)
     if not steam_account:
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest' or 'application/json' in request.headers.get('accept', ''):
+            return JsonResponse({'ok': False, 'error': 'Сначала привяжите Steam-аккаунт.'}, status=400)
         messages.error(request, 'Сначала привяжите Steam-аккаунт.')
         return redirect('profile')
 
@@ -227,6 +223,15 @@ def steam_library_sync(request):
     )
     force = request.POST.get('force') == '1'
     success, count, error_msg = sync_steam_account_library(library, force=force)
+
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest' or 'application/json' in request.headers.get('accept', ''):
+        return JsonResponse({
+            'ok': success,
+            'count': count,
+            'status': library.status,
+            'error': error_msg or '',
+        })
+
     if success:
         messages.success(
             request, f'Библиотека успешно синхронизирована! Всего игр: {count}.'
