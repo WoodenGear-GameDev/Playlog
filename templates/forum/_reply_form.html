@@ -14,7 +14,7 @@
     </div>
 
     {% if user.is_authenticated %}
-    <form method="post" class="p-6 space-y-5">
+    <form method="post" enctype="multipart/form-data" class="p-6 space-y-5">
         {% csrf_token %}
 
         {% if reply_target %}
