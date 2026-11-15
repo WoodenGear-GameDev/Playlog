@@ -29,6 +29,9 @@ class Game(models.Model):
         blank=True,
         verbose_name='Категории',
     )
+    steam_synced_at = models.DateTimeField(
+        'Обновлено из Steam', null=True, blank=True, editable=False
+    )
 
     class Meta:
         verbose_name = 'Игра'

@@ -22,7 +22,7 @@
             <div class="text-zinc-600 dark:text-zinc-400 min-w-0">
                 <span class="text-zinc-500">В ответ на</span>
                 <strong class="text-signal-600 dark:text-signal-400">{% if reply_target.author_id %}@{% endif %}{{ reply_target.author_name }}</strong>:
-                <span class="text-zinc-700 dark:text-zinc-300">{{ reply_target.body|truncatechars:100 }}</span>
+                <span class="text-zinc-700 dark:text-zinc-300">{% if reply_target.body %}{{ reply_target.body|truncatechars:100 }}{% else %}[изображения]{% endif %}</span>
             </div>
             <a href="{% if page %}?page={{ page.number }}{% endif %}#reply-form"
                class="self-start sm:self-auto px-2 py-1 border border-paper-300 dark:border-carbon-800 hover:border-red-500 text-zinc-500 hover:text-red-500 uppercase font-bold text-[10px] flex-shrink-0 transition-colors">
@@ -40,9 +40,10 @@
         </div>
         {% endif %}
 
-        {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
+        {% for hidden in form.hidden_fields %}{% if hidden.name != 'remove_images' %}{{ hidden }}{% endif %}{% endfor %}
 
         {% for field in form.visible_fields %}
+        {% if field.name != 'images' %}
         <div class="space-y-1.5">
             <label for="{{ field.id_for_label }}" class="block font-mono text-xs font-semibold uppercase tracking-wider text-zinc-700 dark:text-zinc-300">
                 {{ field.label }}
@@ -61,6 +62,7 @@
             </div>
             {% endif %}
         </div>
+        {% endif %}
         {% endfor %}
 
         <!-- UI-обёртка прикрепления до 5 скриншотов -->
@@ -70,7 +72,7 @@
                     Скриншоты (до 5 шт.)
                 </span>
                 <span class="text-[10px] text-zinc-400 dark:text-zinc-500">
-                    PNG / JPG / WEBP · ИЛИ CTRL+V
+                    PNG / JPG / WEBP / GIF · ДО 8 МБ · ИЛИ CTRL+V
                 </span>
             </div>
 
@@ -98,6 +100,15 @@
             <p data-attachment-warning class="hidden font-mono text-[11px] text-amber-600 dark:text-amber-400">
                 → Достигнут лимит: можно прикрепить не более 5 скриншотов.
             </p>
+
+            {% if form.images.errors %}
+            <div class="text-xs font-mono text-red-600 dark:text-red-400 space-y-0.5">
+                {% for error in form.images.errors %}
+                    <p>→ {{ error }}</p>
+                {% endfor %}
+                <p class="text-zinc-500 dark:text-zinc-400">Выберите скриншоты заново: браузер не сохраняет выбранные файлы после ошибки.</p>
+            </div>
+            {% endif %}
 
             <!-- Сетка предпросмотра -->
             <div data-attachment-grid class="hidden grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2.5 pt-1"></div>

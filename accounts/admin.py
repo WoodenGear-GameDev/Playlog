@@ -18,7 +18,7 @@ class LibraryGameInline(admin.TabularInline):
 @admin.register(Profile)
 class ProfileAdmin(admin.ModelAdmin):
     list_display = ('user', 'steam_id')
-    readonly_fields = ('steam_id',)
+    readonly_fields = ('steam_id', 'library_synced_at', 'library_sync_requested_at')
     inlines = [LibraryGameInline]
 
 

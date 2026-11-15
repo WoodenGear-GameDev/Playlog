@@ -20,7 +20,7 @@ def content_summary(user):
 
 def _purge_content(user):
     from catalog.models import Rating
-    from forum.models import Post, Topic
+    from forum.models import Post, PostImage, Topic
 
     for topic in Topic.objects.filter(author=user):
         if topic.posts.exclude(author=user).exists():
@@ -32,6 +32,7 @@ def _purge_content(user):
         else:
             topic.delete()
 
+    PostImage.objects.filter(post__author=user).delete()
     Post.objects.filter(author=user).update(is_deleted=True, body='')
     Rating.objects.filter(user=user).delete()
 

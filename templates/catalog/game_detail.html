@@ -80,6 +80,19 @@
                         </p>
                     </div>
                 </div>
+                {% if user.is_staff %}
+                <form method="post" action="{% url 'refresh_game' game.pk %}"
+                      class="pt-4 border-t border-paper-300 dark:border-carbon-800 flex flex-wrap items-center gap-3 font-mono text-xs">
+                    {% csrf_token %}
+                    <button type="submit"
+                            class="px-4 py-2 font-bold uppercase tracking-wider border border-signal-500 bg-signal-500/10 hover:bg-signal-500 text-signal-600 dark:text-signal-400 hover:text-carbon-950 dark:hover:text-carbon-950 transition-colors">
+                        ОБНОВИТЬ ИЗ STEAM
+                    </button>
+                    <span class="text-zinc-500 dark:text-zinc-400">
+                        Последнее обновление: {{ game.steam_synced_at|date:"d.m.Y H:i"|default:"ни разу" }}
+                    </span>
+                </form>
+                {% endif %}
             </div>
 
         </div>
@@ -349,17 +362,17 @@
                 <!-- Шапка отзыва -->
                 <div class="px-4 py-2.5 border-b {% if review.is_mine %}border-signal-500/30 bg-signal-500/10{% else %}border-paper-300 dark:border-carbon-800 bg-paper-50 dark:bg-carbon-950/60{% endif %} flex flex-wrap items-center justify-between gap-2 font-mono text-xs">
                     <div class="flex items-center gap-2.5">
-                        {% if review.user.profile.avatar %}
+                        {% if review.user and review.user.profile.avatar %}
                             <img src="{{ review.user.profile.avatar.url }}"
-                                 alt="{{ review.user.username }}"
+                                 alt="{{ review.author_name }}"
                                  class="w-6 h-6 object-cover border border-signal-500 flex-shrink-0">
                         {% else %}
                             <div class="w-6 h-6 bg-signal-500/15 border border-signal-500/50 text-signal-600 dark:text-signal-400 font-bold flex items-center justify-center text-[11px] flex-shrink-0">
-                                {{ review.user.username|slice:":1"|upper }}
+                                {{ review.author_name|slice:":1"|upper }}
                             </div>
                         {% endif %}
 
-                        <strong class="text-zinc-900 dark:text-zinc-100">@{{ review.user.username }}</strong>
+                        <strong class="text-zinc-900 dark:text-zinc-100">{% if review.user_id %}@{% endif %}{{ review.author_name }}</strong>
 
                         {% if review.is_mine %}
                             <span class="px-1.5 py-0.5 text-[10px] font-bold bg-signal-500/20 border border-signal-500/50 text-signal-700 dark:text-signal-400">

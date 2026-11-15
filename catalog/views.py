@@ -12,6 +12,7 @@ from django.views.decorators.http import require_POST
 
 from .forms import RatingForm
 from .models import Category, Game, Rating, ReviewVote
+from .sync import describe_result, sync_game
 
 RESULTS_PER_PAGE = 24
 
@@ -85,7 +86,7 @@ def game_detail(request, pk):
 
     reviews_qs = (
         game.ratings.exclude(text='')
-        .select_related('user')
+        .select_related('user__profile')
         .annotate(
             helpful_count=Count('votes', filter=Q(votes__is_helpful=True)),
             unhelpful_count=Count('votes', filter=Q(votes__is_helpful=False)),
@@ -218,3 +219,16 @@ def delete_review(request, game_pk, pk):
     return redirect(
         _reviews_url(game_pk, request.POST.get('sort'), request.POST.get('page'))
     )
+
+@login_required
+@require_POST
+def refresh_game(request, pk):
+    if not request.user.is_staff:
+        raise PermissionDenied
+    game = get_object_or_404(Game, pk=pk)
+    result = sync_game(game, overwrite=True)
+    if result:
+        messages.success(request, describe_result(result))
+    else:
+        messages.error(request, describe_result(result))
+    return redirect('game_detail', pk=game.pk)

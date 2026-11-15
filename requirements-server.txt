@@ -1,0 +1,2 @@
+-r requirements.txt
+pysqlite3-binary
