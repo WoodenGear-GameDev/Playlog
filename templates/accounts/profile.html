@@ -428,7 +428,11 @@
                                     <span class="px-2 py-0.5 bg-signal-500/10 border border-signal-500/30 text-signal-600 dark:text-signal-400 font-bold">
                                         {{ entry.playtime_hours }} Ч
                                     </span>
-                                    {% if entry.achievements_total > 0 %}
+                                    {% if entry.achievement_status == 'private' %}
+                                        <span class="px-1.5 py-0.5 bg-amber-500/15 border border-amber-500/40 text-amber-600 dark:text-amber-400 text-[10px]" title="Достижения скрыты приватностью Steam">
+                                            🔒 СКРЫТО
+                                        </span>
+                                    {% elif entry.achievements_total > 0 and entry.achievements_unlocked > 0 %}
                                         {% if entry.achievements_unlocked == entry.achievements_total %}
                                             <span class="px-1.5 py-0.5 bg-amber-500/15 border border-amber-500/40 text-amber-600 dark:text-amber-400 font-bold text-[10px]" title="Все достижения получены!">
                                                 ★ 100%

@@ -177,8 +177,8 @@ def sync_steam_account_library(library: SteamLibrary, force: bool = False):
         header_img = cat_game.header_image if (cat_game and cat_game.header_image) else cover_url
 
         ach_unlocked, ach_total = ach_counts.get(app_id, (0, 0))
-        ach_status = (
-            LibraryGame.AchievementStatus.SYNCED if ach_total > 0
+        default_ach_status = (
+            LibraryGame.AchievementStatus.NOT_SYNCED if ach_total > 0
             else LibraryGame.AchievementStatus.NO_ACHIEVEMENTS
         )
 
@@ -201,9 +201,14 @@ def sync_steam_account_library(library: SteamLibrary, force: bool = False):
                 if lib_game.achievements_unlocked != ach_unlocked:
                     lib_game.achievements_unlocked = ach_unlocked
                     changed = True
-                if lib_game.achievement_status != ach_status:
-                    lib_game.achievement_status = ach_status
+                if lib_game.achievement_status in (LibraryGame.AchievementStatus.NO_ACHIEVEMENTS, ''):
+                    lib_game.achievement_status = LibraryGame.AchievementStatus.NOT_SYNCED
                     changed = True
+            elif ach_total == 0 and lib_game.achievement_status != LibraryGame.AchievementStatus.NO_ACHIEVEMENTS:
+                lib_game.achievement_status = LibraryGame.AchievementStatus.NO_ACHIEVEMENTS
+                lib_game.achievements_total = 0
+                lib_game.achievements_unlocked = 0
+                changed = True
             if changed:
                 to_update.append(lib_game)
         else:
@@ -216,7 +221,7 @@ def sync_steam_account_library(library: SteamLibrary, force: bool = False):
                     header_image=header_img,
                     achievements_unlocked=ach_unlocked,
                     achievements_total=ach_total,
-                    achievement_status=ach_status,
+                    achievement_status=default_ach_status,
                 )
             )
 

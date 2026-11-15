@@ -276,11 +276,21 @@ def game_achievements_card(request, pk):
     library = getattr(steam_account, 'library', None) if steam_account else None
     lib_entry = library.games.filter(steam_app_id=game.steam_app_id).first() if library else None
 
-    # Если текущий пользователь владеет игрой и status=NOT_SYNCED — забирает его ачивки
-    if steam_account and lib_entry and lib_entry.achievement_status == LibraryGame.AchievementStatus.NOT_SYNCED and game.schema_status == Game.SchemaStatus.READY:
-        from accounts.steam_service import sync_user_game_achievements
-        sync_user_game_achievements(steam_account, game.steam_app_id)
-        lib_entry.refresh_from_db()
+    # Если текущий пользователь владеет игрой и статус требует синхронизации — забираем его ачивки
+    if steam_account and lib_entry and game.schema_status == Game.SchemaStatus.READY:
+        user_achs_count = UserAchievement.objects.filter(
+            steam_account=steam_account,
+            achievement__game=game,
+        ).count()
+        needs_sync = (
+            lib_entry.achievement_status == LibraryGame.AchievementStatus.NOT_SYNCED
+            or request.GET.get('force') == '1'
+            or (lib_entry.achievement_status == LibraryGame.AchievementStatus.SYNCED and user_achs_count == 0 and lib_entry.achievements_total > 0)
+        )
+        if needs_sync:
+            from accounts.steam_service import sync_user_game_achievements
+            sync_user_game_achievements(steam_account, game.steam_app_id)
+            lib_entry.refresh_from_db()
 
     achievements = list(game.achievements.all())
     user_unlocked_count = 0
