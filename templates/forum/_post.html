@@ -52,14 +52,33 @@
                        class="font-bold text-signal-600 dark:text-signal-400 hover:underline">
                         {% if post.reply_to.author_id %}@{% endif %}{{ post.reply_to.author_name }}
                     </a>:
-                    <span class="text-zinc-600 dark:text-zinc-400">{{ post.reply_to.body|truncatechars:100 }}</span>
+                    <span class="text-zinc-600 dark:text-zinc-400">{% if post.reply_to.body %}{{ post.reply_to.body|truncatechars:100 }}{% else %}[изображения]{% endif %}</span>
                 {% endif %}
             </blockquote>
             {% endif %}
 
+            {% if post.body %}
             <div class="text-sm text-zinc-800 dark:text-zinc-200 leading-relaxed [&_p]:mb-2 last:[&_p]:mb-0">
                 {{ post.body|linebreaks }}
             </div>
+            {% endif %}
+
+            {% with images=post.images.all %}
+            {% if images %}
+            <div class="post-images flex flex-wrap gap-2">
+                {% for image in images %}
+                <a href="{{ image.image.url }}" target="_blank" rel="noopener noreferrer"
+                   title="Открыть изображение"
+                   class="post-image block border border-paper-300 dark:border-carbon-800 bg-paper-200 dark:bg-carbon-950 hover:border-signal-500 dark:hover:border-signal-500 overflow-hidden transition-colors">
+                    <img src="{{ image.image.url }}"
+                         alt="Скриншот {{ forloop.counter }} к сообщению"
+                         loading="lazy"
+                         class="block h-40 sm:h-48 w-auto max-w-full object-cover">
+                </a>
+                {% endfor %}
+            </div>
+            {% endif %}
+            {% endwith %}
 
             {% if user.is_authenticated %}
             <div class="pt-3 border-t {% if user.is_authenticated and post.author_id == user.pk %}border-signal-500/25{% else %}border-paper-300/70 dark:border-carbon-800/80{% endif %} flex flex-wrap items-center gap-2 font-mono text-xs">
