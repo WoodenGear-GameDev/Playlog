@@ -5,12 +5,25 @@
 
     var url = list.dataset.updatesUrl;
     var pageNumber = list.dataset.page || '1';
+    var startIndex = parseInt(list.dataset.startIndex, 10) || 1;
     var lastId = parseInt(list.dataset.lastId, 10) || 0;
     var baseTitle = document.title;
     var unread = 0;
     var errors = 0;
     var busy = false;
     var timer = null;
+
+    function renumberPosts() {
+        var posts = list.querySelectorAll('article.post');
+        posts.forEach(function (postEl, idx) {
+            var numEl = postEl.querySelector('.post-local-num');
+            if (numEl) {
+                numEl.textContent = '#' + (startIndex + idx);
+            }
+        });
+    }
+
+    renumberPosts();
 
     async function poll() {
         if (busy) return;
@@ -29,6 +42,7 @@
                 var note = document.getElementById('empty-note');
                 if (note) note.remove();
                 list.insertAdjacentHTML('beforeend', data.html);
+                renumberPosts();
                 lastId = data.last_id;
                 if (document.hidden) {
                     unread += data.count;
