@@ -27,11 +27,11 @@ class GameAdmin(admin.ModelAdmin):
         'steam_review_desc',
         'steam_review_percent',
         'release_date',
-        'steam_synced_at',
+        'schema_status',
     )
     search_fields = ('title', 'steam_app_id')
     filter_horizontal = ('categories',)
-    readonly_fields = ('steam_synced_at',)
+    readonly_fields = ('schema_status', 'schema_last_attempt_at', 'schema_error')
     inlines = [AchievementInline]
     actions = ['refresh_from_steam']
 
@@ -49,48 +49,37 @@ class GameAdmin(admin.ModelAdmin):
                     request, f'Ошибка загрузки данных из Steam: {e}', level=messages.ERROR
                 )
 
-    @admin.action(description='Обновить из Steam (перезаписать поля и достижения)')
+    @admin.action(description='Обновить данные и отзывы из Steam')
     def refresh_from_steam(self, request, queryset):
         success_count = 0
-        errors = []
+        error_count = 0
         for game in queryset:
             try:
                 sync_game(game, overwrite=True)
                 success_count += 1
             except SteamAPIError as e:
-                errors.append(f'{game}: {e}')
-
+                error_count += 1
+                self.message_user(
+                    request,
+                    f'Ошибка обновления для «{game.title}»: {e}',
+                    level=messages.ERROR,
+                )
         if success_count:
             self.message_user(
-                request, f'Успешно обновлено игр: {success_count} из {queryset.count()}.'
+                request,
+                f'Успешно обновлено игр из Steam: {success_count}.',
+                level=messages.SUCCESS,
             )
-        if errors:
-            self.message_user(
-                request, f'Ошибки при обновлении: {"; ".join(errors)}', level=messages.ERROR
-            )
+
 
 @admin.register(Rating)
 class RatingAdmin(admin.ModelAdmin):
-    list_display = ('game', 'author_name', 'value', 'has_review', 'updated_at')
+    list_display = ('user', 'game', 'value', 'created_at')
+    search_fields = ('user__username', 'game__title')
     list_filter = ('value',)
-    search_fields = ('game__title', 'user__username', 'text')
-    raw_id_fields = ('user', 'game')
-
-    @admin.display(boolean=True, description='Отзыв')
-    def has_review(self, obj):
-        return bool(obj.text)
 
 
 @admin.register(ReviewVote)
 class ReviewVoteAdmin(admin.ModelAdmin):
-    list_display = ('rating', 'user', 'is_helpful', 'created_at')
+    list_display = ('user', 'rating', 'is_helpful', 'created_at')
     list_filter = ('is_helpful',)
-    raw_id_fields = ('rating', 'user')
-
-
-@admin.register(Achievement)
-class AchievementAdmin(admin.ModelAdmin):
-    list_display = ('name', 'game', 'api_name', 'global_percent')
-    search_fields = ('name', 'api_name', 'game__title')
-    list_filter = ('game',)
-    raw_id_fields = ('game',)

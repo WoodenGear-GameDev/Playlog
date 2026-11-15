@@ -74,8 +74,42 @@
         </div>
         {% endif %}
 
-        <!-- Результаты из Steam (подгружаются асинхронно в фоне) -->
-        <div id="steam-search-container" data-url="{% url 'steam_search_results' %}?q={{ q|urlencode }}"></div>
+        <!-- Результаты из Steam (состояние LOADING сразу в исходном HTML) -->
+        <div id="steam-search-container" data-url="{% url 'steam_search_results' %}?q={{ q|urlencode }}">
+            <div class="mt-10 pt-6 border-t border-paper-300 dark:border-carbon-800 space-y-4">
+                <div class="flex items-center justify-between pb-2 border-b border-paper-300/60 dark:border-carbon-800/70">
+                    <div class="flex items-center gap-2.5">
+                        <span class="font-mono text-xs px-1.5 py-0.5 bg-signal-500/15 border border-signal-500/40 text-signal-600 dark:text-signal-400 font-bold">
+                            STEAM
+                        </span>
+                        <h2 class="text-sm sm:text-base font-bold font-mono uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
+                            Поиск в магазине Steam
+                        </h2>
+                        <span class="inline-flex items-center gap-1 font-mono text-[11px] px-2 py-0.5 bg-signal-500/10 text-signal-600 dark:text-signal-400 animate-pulse font-bold">
+                            [ЗАГРУЗКА...]
+                        </span>
+                    </div>
+                    <p class="hidden sm:block font-mono text-[11px] text-zinc-500 dark:text-zinc-400">
+                        Связываемся со Steam Store API...
+                    </p>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    {% for _ in "1234" %}
+                    <div class="flex flex-col border border-paper-300 dark:border-carbon-800 bg-paper-100 dark:bg-carbon-900 animate-pulse">
+                        <div class="w-full aspect-[231/87] bg-paper-200 dark:bg-carbon-950 border-b border-paper-300 dark:border-carbon-800"></div>
+                        <div class="p-3.5 space-y-3">
+                            <div class="h-4 bg-paper-200 dark:bg-carbon-800 rounded w-3/4"></div>
+                            <div class="pt-2 border-t border-paper-300 dark:border-carbon-800 flex justify-between items-center">
+                                <div class="h-3 bg-paper-200 dark:bg-carbon-800 rounded w-1/4"></div>
+                                <div class="h-6 bg-paper-200 dark:bg-carbon-800 rounded w-1/3"></div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
     </section>
 
     {% else %}
@@ -177,17 +211,39 @@
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     // 1. Асинхронная подгрузка результатов поиска Steam
-    const steamContainer = document.getElementById('steam-search-container');
-    if (steamContainer && steamContainer.dataset.url) {
+    function fetchSteamResults() {
+        const steamContainer = document.getElementById('steam-search-container');
+        if (!steamContainer || !steamContainer.dataset.url) return;
+
         fetch(steamContainer.dataset.url)
-            .then((res) => (res.ok ? res.text() : ''))
+            .then((res) => {
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                return res.text();
+            })
             .then((html) => {
                 if (html && html.trim()) {
                     steamContainer.innerHTML = html;
                 }
             })
-            .catch(() => {});
+            .catch(() => {
+                steamContainer.innerHTML = `
+                    <div class="mt-10 pt-6 border-t border-paper-300 dark:border-carbon-800 space-y-4">
+                        <div class="border border-red-500/40 bg-red-500/5 p-6 font-mono text-xs space-y-3">
+                            <div class="flex items-center gap-2 text-red-600 dark:text-red-400 font-bold uppercase">
+                                <span>✕</span>
+                                <span>Не удалось связаться с магазином Steam (ошибка сети или таймаут)</span>
+                            </div>
+                            <button type="button" onclick="fetchSteamResults()"
+                                    class="px-3 py-1.5 font-bold uppercase border border-red-500 bg-red-500/10 hover:bg-red-500 text-red-600 dark:text-red-400 hover:text-white transition-colors">
+                                Повторить поиск ⟳
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
     }
+    window.fetchSteamResults = fetchSteamResults;
+    fetchSteamResults();
 
     // 2. Горизонтальный скролл и drag-to-scroll ленты игр
     document.querySelectorAll('.game-strip').forEach((strip) => {

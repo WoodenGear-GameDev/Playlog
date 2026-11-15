@@ -102,7 +102,7 @@
                         ОБНОВИТЬ ИЗ STEAM
                     </button>
                     <span class="text-zinc-500 dark:text-zinc-400">
-                        Последнее обновление: {{ game.steam_synced_at|date:"d.m.Y H:i"|default:"ни разу" }}
+                        Последнее обновление: {{ game.schema_last_attempt_at|date:"d.m.Y H:i"|default:"ни разу" }}
                     </span>
                 </form>
                 {% endif %}
@@ -112,92 +112,44 @@
     </section>
 
     <!-- Достижения Steam -->
-    {% if achievements %}
-    <section id="achievements" class="border border-paper-300 dark:border-carbon-800 bg-paper-100 dark:bg-carbon-900">
-        <div class="px-6 py-4 border-b border-paper-300 dark:border-carbon-800 bg-paper-50 dark:bg-carbon-950/60 flex flex-wrap items-center justify-between gap-3">
-            <div class="flex items-center gap-2.5">
-                <span class="font-mono text-xs px-1.5 py-0.5 bg-signal-500/15 border border-signal-500/40 text-signal-600 dark:text-signal-400 font-bold">
-                    #01
-                </span>
-                <h2 class="text-sm sm:text-base font-bold font-mono uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
-                    Достижения Steam
-                </h2>
-                <span class="font-mono text-xs text-zinc-500 dark:text-zinc-400">
-                    [{{ achievements|length }}]
-                </span>
-            </div>
-
-            {% if request.user.is_authenticated and request.user.profile.steam_id %}
-            <div class="flex items-center gap-2 font-mono text-xs">
-                <span class="text-zinc-500 uppercase tracking-wider">ПРОГРЕСС:</span>
-                <span class="px-2 py-0.5 bg-signal-500/15 border border-signal-500/40 text-signal-600 dark:text-signal-400 font-bold">
-                    {{ user_unlocked_count }} / {{ achievements|length }}
-                </span>
-            </div>
-            {% endif %}
-        </div>
-
-        <div class="p-6">
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {% for item in achievements|slice:":3" %}
-                <div class="flex items-start gap-3 p-3 border border-paper-300 dark:border-carbon-800 bg-paper-50 dark:bg-carbon-950/40 {% if item.is_unlocked %}border-signal-500/40{% endif %}">
-                    <div class="relative w-12 h-12 flex-shrink-0 border {% if item.is_unlocked %}border-signal-500/50{% else %}border-paper-300 dark:border-carbon-800{% endif %} bg-paper-200 dark:bg-carbon-950 overflow-hidden flex items-center justify-center">
-                        {% if item.is_unlocked %}
-                            <img src="{{ item.icon_url|default:item.icon_gray_url }}"
-                                 alt=""
-                                 loading="lazy"
-                                 onerror="handleAchIconError(this, '{{ item.icon_gray_url|escapejs }}')"
-                                 class="w-full h-full object-cover">
-                        {% else %}
-                            <img src="{{ item.icon_gray_url|default:item.icon_url }}"
-                                 alt=""
-                                 loading="lazy"
-                                 onerror="handleAchIconError(this, '{{ item.icon_url|escapejs }}')"
-                                 class="w-full h-full object-cover grayscale opacity-60">
-                        {% endif %}
-                        <div class="hidden w-full h-full no-cover-grid items-center justify-center font-mono text-sm {% if item.is_unlocked %}text-signal-500{% else %}text-zinc-400 dark:text-zinc-600{% endif %}">
-                            {% if item.is_ultra_rare %}★{% elif item.is_rare %}◆{% else %}🏆{% endif %}
-                        </div>
-                    </div>
-                    <div class="min-w-0 flex-1">
-                        <div class="flex items-center justify-between gap-2">
-                            <h4 class="font-bold text-xs text-zinc-900 dark:text-zinc-100 truncate {% if item.is_unlocked %}text-signal-600 dark:text-signal-400{% endif %}">
-                                {{ item.name }}
-                            </h4>
-                            {% if item.is_unlocked %}
-                                <span class="font-mono text-[9px] px-1 py-0.2 bg-signal-500/20 text-signal-600 dark:text-signal-400 font-bold border border-signal-500/30">ВЫБИТО</span>
-                            {% endif %}
-                        </div>
-                        <p class="text-[11px] text-zinc-600 dark:text-zinc-400 line-clamp-2 mt-1 leading-snug">
-                            {{ item.description|default:"Скрытое достижение" }}
-                        </p>
-                        <div class="flex items-center gap-1.5 mt-2 font-mono text-[10px]">
-                            {% if item.is_ultra_rare %}
-                                <span class="px-1.5 py-0.5 bg-amber-500/20 text-amber-600 dark:text-amber-400 font-bold border border-amber-500/40">★ {{ item.global_percent }}% (УЛЬТРАРЕДКОЕ)</span>
-                            {% elif item.is_rare %}
-                                <span class="px-1.5 py-0.5 bg-purple-500/20 text-purple-600 dark:text-purple-400 font-bold border border-purple-500/40">★ {{ item.global_percent }}% (РЕДКОЕ)</span>
-                            {% elif item.global_percent %}
-                                <span class="text-zinc-500 dark:text-zinc-400">У {{ item.global_percent }}% игроков</span>
-                            {% endif %}
-                        </div>
-                    </div>
+    <div id="game-achievements-container" data-url="{% url 'game_achievements_card' game.pk %}">
+        {% if game.schema_status == 'not_fetched' %}
+        <section id="achievements" class="border border-paper-300 dark:border-carbon-800 bg-paper-100 dark:bg-carbon-900">
+            <div class="px-6 py-4 border-b border-paper-300 dark:border-carbon-800 bg-paper-50 dark:bg-carbon-950/60 flex flex-wrap items-center justify-between gap-3">
+                <div class="flex items-center gap-2.5">
+                    <span class="font-mono text-xs px-1.5 py-0.5 bg-signal-500/15 border border-signal-500/40 text-signal-600 dark:text-signal-400 font-bold">
+                        #01
+                    </span>
+                    <h2 class="text-sm sm:text-base font-bold font-mono uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
+                        Достижения Steam
+                    </h2>
+                    <span class="inline-flex items-center gap-1 font-mono text-[11px] px-2 py-0.5 bg-signal-500/10 text-signal-600 dark:text-signal-400 animate-pulse font-bold">
+                        [ЗАГРУЗКА ДОСТИЖЕНИЙ STEAM...]
+                    </span>
                 </div>
-                {% endfor %}
+                <p class="hidden sm:block font-mono text-[11px] text-zinc-500 dark:text-zinc-400">
+                    Связываемся со Steam Web API...
+                </p>
             </div>
-
-            {% if achievements|length > 3 %}
-            <div class="mt-4 pt-4 border-t border-paper-300 dark:border-carbon-800 flex justify-end">
-                <button type="button"
-                        onclick="openAchievementsModal('{% url 'game_achievements_modal' game.pk %}', '{{ game.title|escapejs }}')"
-                        class="px-5 py-2 font-mono text-xs font-bold uppercase tracking-wider border border-paper-300 dark:border-carbon-800 hover:border-signal-500 bg-paper-50 dark:bg-carbon-950 text-zinc-700 dark:text-zinc-300 hover:text-signal-600 dark:hover:text-signal-400 transition-colors inline-flex items-center gap-2">
-                    <span>ПОСМОТРЕТЬ ВСЕ ({{ achievements|length }})</span>
-                    <span>→</span>
-                </button>
+            <div class="p-6">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {% for _ in "123" %}
+                    <div class="flex items-start gap-3 p-3 border border-paper-300 dark:border-carbon-800 bg-paper-50 dark:bg-carbon-950/40 animate-pulse">
+                        <div class="w-12 h-12 flex-shrink-0 bg-paper-200 dark:bg-carbon-950 border border-paper-300 dark:border-carbon-800"></div>
+                        <div class="min-w-0 flex-1 space-y-2">
+                            <div class="h-4 bg-paper-200 dark:bg-carbon-800 rounded w-3/4"></div>
+                            <div class="h-3 bg-paper-200 dark:bg-carbon-800 rounded w-full"></div>
+                            <div class="h-3 bg-paper-200 dark:bg-carbon-800 rounded w-1/3"></div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
             </div>
-            {% endif %}
-        </div>
-    </section>
-    {% endif %}
+        </section>
+        {% else %}
+            {% include 'catalog/partials/game_achievements_card.html' %}
+        {% endif %}
+    </div>
 
     <!-- Средняя сетка: Оценка + Сообщество (Чат и Форум) -->
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -280,8 +232,8 @@
                     <div class="flex items-center justify-between text-[11px] text-zinc-500 pt-1 border-t border-paper-300/60 dark:border-carbon-800/60">
                         <span>
                             {{ game.steam_review_total }} отзывов
-                            {% if game.steam_synced_at %}
-                                · {{ game.steam_synced_at|timesince }} назад
+                            {% if game.schema_last_attempt_at %}
+                                · {{ game.schema_last_attempt_at|timesince }} назад
                             {% endif %}
                         </span>
                         <div class="flex items-center gap-2.5">
@@ -735,5 +687,28 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 });
+function loadAchievementsCard(force = false) {
+    const container = document.getElementById('game-achievements-container');
+    if (!container || !container.dataset.url) return;
+    const url = force ? container.dataset.url + (container.dataset.url.includes('?') ? '&' : '?') + 'force=1' : container.dataset.url;
+    fetch(url)
+        .then((res) => {
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            return res.text();
+        })
+        .then((html) => {
+            if (html && html.trim()) {
+                container.innerHTML = html;
+            }
+        })
+        .catch(() => {});
+}
+window.loadAchievementsCard = loadAchievementsCard;
+
+{% if game.schema_status == 'not_fetched' %}
+document.addEventListener('DOMContentLoaded', () => {
+    loadAchievementsCard();
+});
+{% endif %}
 </script>
 {% endblock %}

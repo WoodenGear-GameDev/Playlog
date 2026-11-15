@@ -19,7 +19,7 @@
     <div class="p-3 border border-signal-500/40 bg-signal-500/10 font-mono text-xs text-zinc-700 dark:text-zinc-300 flex flex-wrap items-center justify-between gap-2">
         <span>
             Так ваш профиль видят другие пользователи.
-            {% if owner_profile.steam_id and not owner_profile.show_steam %}
+            {% if steam_account.steam_id and not steam_account.show_steam %}
             Steam и библиотека сейчас скрыты: включить их можно в личном кабинете.
             {% endif %}
         </span>
@@ -78,7 +78,7 @@
             <span class="font-bold uppercase tracking-wider text-zinc-900 dark:text-zinc-100">Steam</span>
             <span class="text-signal-600 dark:text-signal-400 text-[11px]">[ПОДТВЕРЖДЁН]</span>
         </div>
-        <a href="https://steamcommunity.com/profiles/{{ owner_profile.steam_id }}"
+        <a href="https://steamcommunity.com/profiles/{{ steam_account.steam_id }}"
            target="_blank" rel="noopener noreferrer"
            class="font-bold text-signal-600 dark:text-signal-400 hover:underline">
             Профиль в Steam ↗
@@ -180,28 +180,18 @@
             {% for entry in library_entries %}
             <div class="group flex flex-col border border-paper-300 dark:border-carbon-800 bg-paper-100 dark:bg-carbon-900 hover:border-signal-500 dark:hover:border-signal-500 transition-colors">
                 <div class="relative w-full aspect-[16/9] border-b border-paper-300 dark:border-carbon-800 bg-paper-200 dark:bg-carbon-950 overflow-hidden">
-                    {% if entry.header_image %}
-                        <img src="{{ entry.header_image }}"
-                             alt="{{ entry.display_name }}"
-                             loading="lazy"
-                             class="w-full h-full object-cover">
-                    {% elif entry.catalog_game and entry.catalog_game.header_image %}
-                        <img src="{{ entry.catalog_game.header_image }}"
-                             alt="{{ entry.display_name }}"
-                             loading="lazy"
-                             class="w-full h-full object-cover">
-                    {% elif entry.steam_app_id %}
-                        <img src="https://cdn.akamai.steamstatic.com/steam/apps/{{ entry.steam_app_id }}/header.jpg"
+                    {% if entry.display_cover %}
+                        <img src="{{ entry.display_cover }}"
                              alt="{{ entry.display_name }}"
                              loading="lazy"
                              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
                              class="w-full h-full object-cover">
                         <div class="hidden w-full h-full no-cover-grid items-center justify-center text-zinc-400 dark:text-zinc-600 font-mono text-xs">
-                            НЕТ ОБЛОЖКИ
+                            {{ entry.display_name|slice:":15" }}
                         </div>
                     {% else %}
                         <div class="w-full h-full no-cover-grid flex items-center justify-center text-zinc-400 dark:text-zinc-600 font-mono text-xs">
-                            НЕТ ОБЛОЖКИ
+                            {{ entry.display_name|slice:":15" }}
                         </div>
                     {% endif %}
                 </div>

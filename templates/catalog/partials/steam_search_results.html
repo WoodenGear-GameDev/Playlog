@@ -1,4 +1,32 @@
-{% if steam_results %}
+{% if error %}
+<div class="mt-10 pt-6 border-t border-paper-300 dark:border-carbon-800 space-y-4">
+    <div class="flex items-center justify-between pb-2 border-b border-paper-300/60 dark:border-carbon-800/70">
+        <div class="flex items-center gap-2.5">
+            <span class="font-mono text-xs px-1.5 py-0.5 bg-red-500/15 border border-red-500/40 text-red-600 dark:text-red-400 font-bold">
+                STEAM
+            </span>
+            <h2 class="text-sm sm:text-base font-bold font-mono uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
+                Поиск в Steam
+            </h2>
+        </div>
+    </div>
+    <div class="border border-red-500/40 bg-red-500/5 p-6 font-mono text-xs space-y-3">
+        <div class="flex items-start gap-2.5 text-red-600 dark:text-red-400 font-bold">
+            <span>✕</span>
+            <span>Не удалось связаться с магазином Steam (ошибка сети или таймаут)</span>
+        </div>
+        {% if error %}
+        <p class="text-zinc-600 dark:text-zinc-400 pl-5 text-[11px]">{{ error }}</p>
+        {% endif %}
+        <div class="pl-5 pt-1">
+            <button type="button" onclick="fetchSteamResults()"
+                    class="px-3 py-1.5 font-bold uppercase border border-red-500 bg-red-500/10 hover:bg-red-500 text-red-600 dark:text-red-400 hover:text-white transition-colors">
+                Повторить поиск ⟳
+            </button>
+        </div>
+    </div>
+</div>
+{% elif steam_results %}
 <div class="mt-10 pt-6 border-t border-paper-300 dark:border-carbon-800 space-y-4">
     <div class="flex items-center justify-between pb-2 border-b border-paper-300/60 dark:border-carbon-800/70">
         <div class="flex items-center gap-2.5">
@@ -46,6 +74,22 @@
             </div>
         </div>
         {% endfor %}
+    </div>
+</div>
+{% elif q %}
+<div class="mt-10 pt-6 border-t border-paper-300 dark:border-carbon-800 space-y-4">
+    <div class="flex items-center justify-between pb-2 border-b border-paper-300/60 dark:border-carbon-800/70">
+        <div class="flex items-center gap-2.5">
+            <span class="font-mono text-xs px-1.5 py-0.5 bg-paper-200 dark:bg-carbon-800 text-zinc-500 font-bold">
+                STEAM
+            </span>
+            <h2 class="text-sm sm:text-base font-bold font-mono uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
+                Поиск в магазине Steam
+            </h2>
+        </div>
+    </div>
+    <div class="border border-paper-300 dark:border-carbon-800 bg-paper-100 dark:bg-carbon-900 p-8 text-center font-mono text-xs sm:text-sm text-zinc-600 dark:text-zinc-400">
+        В магазине Steam по запросу «{{ q }}» ничего не найдено.
     </div>
 </div>
 {% endif %}

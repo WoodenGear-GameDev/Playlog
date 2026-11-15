@@ -3,7 +3,7 @@ import logging
 from django.db import transaction
 from django.utils import timezone
 
-from .models import Achievement, Category
+from .models import Achievement, Category, Game
 from .steam_service import (
     SteamAPIError,
     SteamDataValidationError,
@@ -40,43 +40,41 @@ def describe_result(result):
     return text
 
 
-def sync_game(game, overwrite=False):
-    """Синхронизирует игру со всеми метаданными, отзывами и достижениями из Steam.
+def import_game_from_steam(steam_app_id: int):
+    """Быстрый импорт игры из Steam Store API (без схемы достижений).
 
-    Атомарная транзакция: если хоть один запрос завершился ошибкой или вернул
-    неполные данные, выбрасывается SteamAPIError, транзакция откатывается и
-    в базу данных НИЧЕГО не сохраняется.
+    Выполняет только получение метаданных и сводки отзывов из магазина Steam.
+    Не блокирует добавление игры загрузкой десятков достижений.
+    Выставляет schema_status = NOT_FETCHED.
     """
-    # 1. Запрашиваем полные метаданные игры из Steam Store API
-    data = fetch_app_details(game.steam_app_id)
+    from accounts.models import LibraryGame
+
+    # 1. Запрашиваем метаданные игры из Steam Store API
+    data = fetch_app_details(steam_app_id)
 
     title = (data.get('title') or '').strip()
     if not title:
-        raise SteamDataValidationError(f'Steam Store API не вернул название для игры {game.steam_app_id}.')
+        raise SteamDataValidationError(f'Steam Store API не вернул название для игры {steam_app_id}.')
 
     header_image = (data.get('header_image') or '').strip()
     if not header_image:
         raise SteamDataValidationError(f'Steam Store API не вернул обложку для игры «{title}».')
 
     # 2. Запрашиваем сводку отзывов Steam
-    review_summary = fetch_game_review_summary(game.steam_app_id)
+    review_summary = fetch_game_review_summary(steam_app_id)
 
-    # 3. Запрашиваем схему всех достижений и их глобальную редкость
-    schema_achievements = fetch_schema_achievements(game.steam_app_id)
-    global_percents = {}
-    if schema_achievements:
-        global_percents = fetch_global_achievement_percentages(game.steam_app_id)
-
-    # 4. Атомарное сохранение в БД: только если всё получено успешно
+    # 3. Атомарное сохранение игры в каталог
     with transaction.atomic():
+        game, created = Game.objects.get_or_create(steam_app_id=steam_app_id)
         game.title = title
         game.header_image = header_image
         game.description = (data.get('description') or '').strip()
         game.release_date = data.get('release_date')
         game.steam_review_desc = review_summary.get('desc', '')
-        game.steam_review_percent = review_summary.get('percent')
+        game.steam_review_percent = review_summary.get('percent') or 0
         game.steam_review_total = review_summary.get('total', 0)
-        game.steam_synced_at = timezone.now()
+        if created or game.schema_status != Game.SchemaStatus.READY:
+            game.schema_status = Game.SchemaStatus.NOT_FETCHED
         game.save()
 
         # Категории / Жанры
@@ -85,7 +83,38 @@ def sync_game(game, overwrite=False):
             categories = [Category.objects.get_or_create(name=name)[0] for name in names]
             game.categories.set(categories)
 
-        # Достижения с процентом редкости
+        # Обновляем пустые обложки в библиотеках
+        LibraryGame.objects.filter(steam_app_id=steam_app_id, header_image='').update(header_image=header_image)
+
+    logger.info('Successfully imported game %s (AppID %s) from Steam Store', game.title, steam_app_id)
+    return game
+
+
+def sync_game_achievements_schema(game: Game) -> int:
+    """Загружает или обновляет схему достижений игры и их глобальную редкость.
+
+    Вызывается отдельно от добавления игры (по требованию со страницы игры).
+    Выставляет schema_status = READY, NO_ACHIEVEMENTS или ERROR.
+    Возвращает количество загруженных достижений.
+    """
+    game.schema_status = Game.SchemaStatus.FETCHING
+    game.schema_last_attempt_at = timezone.now()
+    game.save(update_fields=['schema_status', 'schema_last_attempt_at'])
+
+    try:
+        schema_achievements = fetch_schema_achievements(game.steam_app_id)
+        global_percents = {}
+        if schema_achievements:
+            global_percents = fetch_global_achievement_percentages(game.steam_app_id)
+    except SteamAPIError as e:
+        logger.error('Failed to sync achievements schema for %s: %s', game.title, e)
+        game.schema_status = Game.SchemaStatus.ERROR
+        game.schema_error = str(e)
+        game.schema_last_attempt_at = timezone.now()
+        game.save(update_fields=['schema_status', 'schema_error', 'schema_last_attempt_at'])
+        return 0
+
+    with transaction.atomic():
         if schema_achievements:
             to_create = [
                 Achievement(
@@ -105,14 +134,29 @@ def sync_game(game, overwrite=False):
                 update_fields=['name', 'description', 'icon_url', 'icon_gray_url', 'global_percent'],
                 unique_fields=['game', 'api_name'],
             )
+            game.schema_status = Game.SchemaStatus.READY
+            game.schema_error = ''
         else:
             game.achievements.all().delete()
+            game.schema_status = Game.SchemaStatus.NO_ACHIEVEMENTS
+            game.schema_error = ''
 
-    logger.info('Successfully synced game %s with %d achievements and reviews', game.title, len(schema_achievements))
+        game.schema_last_attempt_at = timezone.now()
+        game.save(update_fields=['schema_status', 'schema_error', 'schema_last_attempt_at'])
+
+    logger.info('Successfully synced %d schema achievements for %s', len(schema_achievements), game.title)
+    return len(schema_achievements)
+
+
+def sync_game(game, overwrite=False):
+    """Полная синхронизация игры: метаданные, отзывы и схема достижений (для админки)."""
+    import_game_from_steam(game.steam_app_id)
+    ach_count = sync_game_achievements_schema(game)
+
     changed_items = ['метаданные']
-    if schema_achievements:
-        changed_items.append(f'{len(schema_achievements)} достижений')
-    if review_summary.get('total'):
+    if ach_count:
+        changed_items.append(f'{ach_count} достижений')
+    if game.steam_review_total:
         changed_items.append('отзывы Steam')
     return SyncResult(True, changed=changed_items)
 
@@ -124,14 +168,12 @@ def resync_game_steam(game):
 
     with transaction.atomic():
         game.steam_review_desc = review_summary.get('desc', '')
-        game.steam_review_percent = review_summary.get('percent')
+        game.steam_review_percent = review_summary.get('percent') or 0
         game.steam_review_total = review_summary.get('total', 0)
-        game.steam_synced_at = timezone.now()
         game.save(update_fields=[
             'steam_review_desc',
             'steam_review_percent',
             'steam_review_total',
-            'steam_synced_at',
         ])
 
         if global_percents:

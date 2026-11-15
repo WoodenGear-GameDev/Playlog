@@ -169,19 +169,24 @@ def fetch_app_details(app_id: int):
 
 
 def search_steam_games(query: str, limit: int = 12):
-    """Ищет игры в Steam Store Search API."""
+    """Ищет игры в Steam Store Search API.
+
+    Выбрасывает SteamAPIError при сбоях сети или ошибках Steam.
+    """
     if not query or not query.strip():
         return []
 
     url = 'https://store.steampowered.com/api/storesearch/'
     params = {'term': query.strip(), 'l': 'russian', 'cc': 'ru'}
+    response = steam_get(url, params=params, timeout=8)
+    if response.status_code != 200:
+        raise SteamAPIError(f'Steam Store Search API вернул код {response.status_code}.')
+
     try:
-        response = steam_get(url, params=params, timeout=5)
-        response.raise_for_status()
         data = response.json()
     except Exception as e:
-        logger.warning('Failed to search Steam games for "%s": %s', query, e)
-        return []
+        logger.error('Invalid JSON from Steam Store search for "%s": %s', query, e)
+        raise SteamDataValidationError('Steam вернул некорректный ответ поиска.') from e
 
     items = data.get('items', [])
     results = []
@@ -268,14 +273,14 @@ def fetch_player_unlocked_achievements(steam_id: str, app_id: int):
             timeout=8,
         )
     except SteamPrivacyError:
-        return set(), 0, True
+        return {}, 0, True
 
     if res.status_code == 403:
-        return set(), 0, True
+        return {}, 0, True
 
     if res.status_code == 400:
         # У игры нет статистики/достижений
-        return set(), 0, False
+        return {}, 0, False
 
     if res.status_code != 200:
         logger.error('Steam returned status %s for GetPlayerAchievements on %s/%s: %s', res.status_code, steam_id, app_id, res.text[:200])
@@ -289,23 +294,28 @@ def fetch_player_unlocked_achievements(steam_id: str, app_id: int):
     if not stats.get('success'):
         error_msg = stats.get('error', '')
         if 'profile is not public' in error_msg.lower():
-            return set(), 0, True
+            return {}, 0, True
         raise SteamAPIError(f'Steam не смог отдать достижения игрока: {error_msg}')
 
     achievements = stats.get('achievements', [])
     total = len(achievements)
-    unlocked_set = {
-        a['apiname']
-        for a in achievements
-        if a.get('achieved') == 1
-    }
-    return unlocked_set, total, False
-
-
-def fetch_player_achievement_counts(steam_id: str, app_id: int):
-    """Возвращает (unlocked, total, is_private) для игры."""
-    unlocked_set, total, is_priv = fetch_player_unlocked_achievements(steam_id, app_id)
-    return len(unlocked_set), total, is_priv
+    unlocked_map = {}
+    for a in achievements:
+        if a.get('achieved') == 1:
+            api_name = a.get('apiname')
+            if not api_name:
+                continue
+            raw_time = a.get('unlocktime')
+            dt = None
+            if raw_time:
+                try:
+                    ts = int(raw_time)
+                    if ts > 0:
+                        dt = datetime.datetime.fromtimestamp(ts, tz=datetime.timezone.utc)
+                except (ValueError, TypeError, OSError):
+                    pass
+            unlocked_map[api_name] = dt
+    return unlocked_map, total, False
 
 
 def fetch_global_achievement_percentages(app_id: int) -> dict[str, float]:
@@ -360,6 +370,18 @@ REVIEW_SCORE_DESCRIPTIONS = {
     'Overwhelmingly Negative': 'Крайне отрицательные',
 }
 
+REVIEW_TIER_MAP = {
+    'Overwhelmingly Positive': 1,
+    'Very Positive': 2,
+    'Positive': 3,
+    'Mostly Positive': 4,
+    'Mixed': 5,
+    'Mostly Negative': 6,
+    'Negative': 7,
+    'Very Negative': 8,
+    'Overwhelmingly Negative': 9,
+}
+
 
 def fetch_game_review_summary(app_id: int) -> dict:
     """Запрашивает сводку пользовательских отзывов Steam (рейтинг, %, общее число)."""
@@ -406,6 +428,7 @@ def fetch_game_review_summary(app_id: int) -> dict:
         'desc': desc,
         'percent': percent,
         'total': total_reviews,
+        'tier': REVIEW_TIER_MAP.get(raw_desc),
     }
 
 
