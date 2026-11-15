@@ -11,17 +11,21 @@ from django.http import JsonResponse
 from django.template.loader import render_to_string
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_GET, require_POST
+from django.db import transaction
 
 from types import SimpleNamespace
+from datetime import timedelta
 
 from catalog.models import Game
 
-from .forms import PostForm, TopicForm
-from .models import Post, Topic
+from .forms import InviteForm, PostForm, TopicForm
+from .models import GameInvite, Post, Topic
 
 POSTS_PER_PAGE = 20
 CHAT_PER_PAGE = 30
 UPDATES_BATCH = 50
+MAX_ACTIVE_INVITES = 3
+INVITE_KEEP_AFTER_END = timedelta(hours=1)
 
 DEFAULT_TOPIC_SORT = 'new'
 TOPIC_SORTS = {
@@ -75,7 +79,7 @@ def topic_create(request, game_pk):
 
 def topic_detail(request, pk):
     topic = get_object_or_404(
-        Topic.objects.select_related('game', 'author'), pk=pk
+        Topic.objects.select_related('game', 'author__profile'), pk=pk
     )
 
     if request.method == 'POST':
@@ -86,21 +90,23 @@ def topic_detail(request, pk):
         
         if not request.user.is_authenticated:
             return redirect_to_login(request.get_full_path())
-        form = PostForm(request.POST)
+        form = PostForm(request.POST, request.FILES)
         reply_target = _reply_target(topic.posts.all(), request.POST.get('reply_to'))
         if form.is_valid():
-            post = form.save(commit=False)
-            post.topic = topic
-            post.author = request.user
-            post.reply_to = reply_target
-            post.save()
+            with transaction.atomic():
+                post = form.save(commit=False)
+                post.topic = topic
+                post.author = request.user
+                post.reply_to = reply_target
+                post.save()
+                form.save_images(post)
             Topic.objects.filter(pk=topic.pk).update(last_activity=timezone.now())
             return redirect('post_permalink', pk=post.pk)
     else:
         form = PostForm()
         reply_target = _reply_target(topic.posts.all(), request.GET.get('reply'))
 
-    posts = topic.posts.select_related('author', 'reply_to__author')
+    posts = topic.posts.select_related('author__profile', 'reply_to__author').prefetch_related('images')
     page = Paginator(posts, POSTS_PER_PAGE).get_page(request.GET.get('page'))
     return render(request, 'forum/topic_detail.html', {
         'topic': topic,
@@ -150,12 +156,14 @@ def post_edit(request, pk):
         raise PermissionDenied
 
     if request.method == 'POST':
-        form = PostForm(request.POST, instance=post)
+        form = PostForm(request.POST, request.FILES, instance=post)
         if form.is_valid():
-            if form.has_changed():
-                post = form.save(commit=False)
-                post.edited_at = timezone.now()
-                post.save(update_fields=['body', 'edited_at'])
+            if form.has_real_changes():
+                with transaction.atomic():
+                    post = form.save(commit=False)
+                    post.edited_at = timezone.now()
+                    post.save(update_fields=['body', 'edited_at'])
+                    form.save_images(post)
                 messages.success(request, 'Сообщение изменено.')
             return redirect('post_permalink', pk=post.pk)
     else:
@@ -171,6 +179,7 @@ def post_delete(request, pk):
     if post.author_id != request.user.pk and not request.user.is_staff:
         raise PermissionDenied
     if not post.is_deleted:
+        post.images.all().delete()
         post.is_deleted = True
         post.body = ''
         post.save(update_fields=['is_deleted', 'body'])
@@ -184,20 +193,22 @@ def game_chat(request, game_pk):
     if request.method == 'POST':
         if not request.user.is_authenticated:
             return redirect_to_login(request.get_full_path())
-        form = PostForm(request.POST)
+        form = PostForm(request.POST, request.FILES)
         reply_target = _reply_target(chat_posts, request.POST.get('reply_to'))
         if form.is_valid():
-            post = form.save(commit=False)
-            post.game = game
-            post.author = request.user
-            post.reply_to = reply_target
-            post.save()
+            with transaction.atomic():
+                post = form.save(commit=False)
+                post.game = game
+                post.author = request.user
+                post.reply_to = reply_target
+                post.save()
+                form.save_images(post)
             return redirect('post_permalink', pk=post.pk)
     else:
         form = PostForm()
         reply_target = _reply_target(chat_posts, request.GET.get('reply'))
 
-    posts = chat_posts.select_related('author', 'reply_to__author')
+    posts = chat_posts.select_related('author__profile', 'reply_to__author').prefetch_related('images')
     paginator = Paginator(posts, CHAT_PER_PAGE)
     # Без номера страницы открываем последнюю: новые сообщения внизу
     page = paginator.get_page(request.GET.get('page') or paginator.num_pages)
@@ -237,7 +248,8 @@ def _updates_response(request, posts):
 
     batch = list(
         posts.filter(pk__gt=int(after))
-        .select_related('author', 'reply_to__author')
+        .select_related('author__profile', 'reply_to__author')
+        .prefetch_related('images')
         .order_by('pk')[:UPDATES_BATCH + 1]
     )
     has_more = len(batch) > UPDATES_BATCH
@@ -275,3 +287,88 @@ def game_chat_updates(request, game_pk):
 def topic_updates(request, pk):
     topic = get_object_or_404(Topic, pk=pk)
     return _updates_response(request, topic.posts.all())
+
+def _active_invites(game):
+    return game.invites.active().select_related('author__profile')
+
+
+def _purge_old_invites():
+    border = timezone.now() - INVITE_KEEP_AFTER_END
+    GameInvite.objects.filter(Q(expires_at__lt=border) | Q(closed_at__lt=border)).delete()
+
+
+def invite_list(request, game_pk):
+    game = get_object_or_404(Game, pk=game_pk)
+
+    if request.method == 'POST':
+        if not request.user.is_authenticated:
+            return redirect_to_login(request.get_full_path())
+        form = InviteForm(request.POST)
+        if form.is_valid():
+            data = form.cleaned_data
+            has_steam = bool(getattr(getattr(request.user, 'steam_account', None), 'steam_id', ''))
+            active_count = GameInvite.objects.active().filter(author=request.user).count()
+            if active_count >= MAX_ACTIVE_INVITES:
+                form.add_error(
+                    None,
+                    f'Одновременно можно держать не более {MAX_ACTIVE_INVITES} приглашений. '
+                    'Завершите одно из прежних.',
+                )
+            elif not (data['link'] or data['join_code'] or has_steam):
+                form.add_error(
+                    None,
+                    'Укажите ссылку, код лобби или адрес сервера. Если у игры нет ни ссылки, '
+                    'ни кода, привяжите Steam в профиле: тогда в приглашении появится ссылка '
+                    'на ваш профиль, и вас смогут добавить в друзья.',
+                )
+            else:
+                _purge_old_invites()
+                invite = form.save(commit=False)
+                invite.game = game
+                invite.author = request.user
+                invite.expires_at = timezone.now() + timedelta(hours=data['hours'])
+                invite.save()
+                messages.success(request, 'Приглашение опубликовано.')
+                return redirect('invite_list', game_pk=game.pk)
+    else:
+        form = InviteForm()
+
+    invites = list(_active_invites(game))
+    my_active = 0
+    if request.user.is_authenticated:
+        my_active = GameInvite.objects.active().filter(author=request.user).count()
+    return render(request, 'forum/invite_list.html', {
+        'game': game,
+        'form': form,
+        'invites': invites,
+        'version': ','.join(str(invite.pk) for invite in invites),
+        'my_active': my_active,
+        'max_active': MAX_ACTIVE_INVITES,
+    })
+
+
+@login_required
+@require_POST
+def invite_close(request, game_pk, pk):
+    invite = get_object_or_404(GameInvite, pk=pk, game_id=game_pk)
+    if invite.author_id != request.user.pk and not request.user.is_staff:
+        raise PermissionDenied
+    if invite.is_active:
+        invite.closed_at = timezone.now()
+        invite.save(update_fields=['closed_at'])
+        messages.success(request, 'Приглашение завершено.')
+    return redirect('invite_list', game_pk=game_pk)
+
+
+@require_GET
+@never_cache
+def invite_updates(request, game_pk):
+    game = get_object_or_404(Game, pk=game_pk)
+    invites = list(_active_invites(game))
+    version = ','.join(str(invite.pk) for invite in invites)
+    if request.GET.get('v') == version:
+        return JsonResponse({'changed': False})
+    html = render_to_string(
+        'forum/_invite_list.html', {'invites': invites, 'game': game}, request=request
+    )
+    return JsonResponse({'changed': True, 'html': html, 'version': version})

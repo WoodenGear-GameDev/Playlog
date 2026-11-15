@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}PLAYLOG // Игровой архив{% endblock %}</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%2322C55E'/%3E%3Ctext x='50%25' y='53%25' dominant-baseline='middle' text-anchor='middle' fill='%23141416' font-family='monospace' font-weight='900' font-size='34'%3EPL%3C/text%3E%3C/svg%3E">
 
     <!-- Предотвращение мерцания темы при загрузке -->
     <script>
@@ -42,7 +43,7 @@
                             200: '#F4F4F5', // Ховер и заглушки обложек
                             300: '#E4E4E7', // Границы 1px
                         },
-                        // Зелёный акцент (без изменений)
+                        // Зелёный акцент
                         signal: {
                             400: '#4ADE80',
                             500: '#22C55E',
@@ -119,67 +120,89 @@
         .light .game-strip::-webkit-scrollbar-thumb:hover {
             background: #22C55E;
         }
+
+        /* Кастомный тонкий скроллбар для модальных окон */
+        .custom-scroll {
+            scrollbar-width: thin;
+            scrollbar-color: #A1A1AA transparent;
+        }
+        .custom-scroll::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scroll::-webkit-scrollbar-track {
+            background: transparent;
+            margin: 4px 0;
+        }
+        .custom-scroll::-webkit-scrollbar-thumb {
+            background-color: #A1A1AA;
+            border-radius: 0;
+            transition: background-color 0.15s ease;
+        }
+        .custom-scroll::-webkit-scrollbar-thumb:hover {
+            background-color: #16A34A;
+        }
+        .dark .custom-scroll {
+            scrollbar-color: #2E2E34 transparent;
+        }
+        .dark .custom-scroll::-webkit-scrollbar-thumb {
+            background-color: #2E2E34;
+        }
+        .dark .custom-scroll::-webkit-scrollbar-thumb:hover {
+            background-color: #22C55E;
+        }
     </style>
 </head>
 <body class="min-h-screen flex flex-col font-sans bg-paper-50 text-zinc-900 dark:bg-carbon-950 dark:text-zinc-100 antialiased selection:bg-signal-500 selection:text-carbon-950">
 
     <!-- Основная шапка навигации -->
     <header class="sticky top-0 z-50 border-b border-paper-300 dark:border-carbon-800 bg-paper-100/95 dark:bg-carbon-900/95 backdrop-blur-sm">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex items-center justify-between h-14 sm:h-16 gap-4">
+        <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-14 sm:h-16 gap-2 sm:gap-4">
 
                 <!-- Слева: Логотип + Навигация -->
-                <div class="flex items-center gap-6">
-                    <a href="{% url 'home' %}" class="flex items-center gap-2.5 group flex-shrink-0" title="На главную">
-                        <span class="font-mono font-black text-xs px-2 py-1 bg-signal-500 text-carbon-950 group-hover:bg-signal-400 transition-colors">
+                <div class="flex items-center gap-4 md:gap-6 min-w-0">
+                    <a href="{% url 'home' %}" class="flex items-center gap-2 sm:gap-2.5 group flex-shrink-0" title="На главную">
+                        <span class="font-mono font-black text-xs px-1.5 sm:px-2 py-1 bg-signal-500 text-carbon-950 group-hover:bg-signal-400 transition-colors">
                             PL
                         </span>
-                        <span class="font-mono font-bold tracking-widest text-base sm:text-lg text-zinc-950 dark:text-white group-hover:text-signal-600 dark:group-hover:text-signal-400 transition-colors">
+                        <span class="font-mono font-bold tracking-wider sm:tracking-widest text-sm sm:text-lg text-zinc-950 dark:text-white group-hover:text-signal-600 dark:group-hover:text-signal-400 transition-colors">
                             PLAYLOG
                         </span>
                     </a>
 
-                    <nav class="flex items-center gap-1 border-l border-paper-300 dark:border-carbon-800 pl-4 sm:pl-6">
+                    <nav class="hidden sm:flex items-center gap-1 border-l border-paper-300 dark:border-carbon-800 pl-4 md:pl-6">
                         <a href="{% url 'home' %}"
-                           class="px-3 py-1.5 text-xs font-mono font-semibold tracking-wider border transition-colors {% if request.resolver_match.url_name == 'home' %}border-signal-500 bg-signal-500/10 text-signal-600 dark:text-signal-400{% else %}border-transparent text-zinc-600 dark:text-zinc-400 hover:border-paper-300 dark:hover:border-carbon-800 hover:text-zinc-950 dark:hover:text-white{% endif %}">
+                           class="px-3 py-1.5 text-xs font-mono font-semibold tracking-wider border transition-colors whitespace-nowrap {% if request.resolver_match.url_name == 'home' %}border-signal-500 bg-signal-500/10 text-signal-600 dark:text-signal-400{% else %}border-transparent text-zinc-600 dark:text-zinc-400 hover:border-paper-300 dark:hover:border-carbon-800 hover:text-zinc-950 dark:hover:text-white{% endif %}">
                             [01] КАТАЛОГ
                         </a>
-
-                        {% comment %}
-                        Когда добавите маршрут форума в urls.py, удалите comment/endcomment и проверьте имя маршрута:
-                        <a href="{% url 'forum' %}"
-                           class="px-3 py-1.5 text-xs font-mono font-semibold tracking-wider border transition-colors {% if 'forum' in request.resolver_match.url_name or 'topic' in request.resolver_match.url_name %}border-signal-500 bg-signal-500/10 text-signal-600 dark:text-signal-400{% else %}border-transparent text-zinc-600 dark:text-zinc-400 hover:border-paper-300 dark:hover:border-carbon-800 hover:text-zinc-950 dark:hover:text-white{% endif %}">
-                            [02] ФОРУМ
-                        </a>
-                        {% endcomment %}
                     </nav>
                 </div>
 
                 <!-- Справа: Переключатель темы + Блок авторизации -->
-                <div class="flex items-center gap-2 sm:gap-3">
+                <div class="flex items-center gap-1.5 sm:gap-3 flex-shrink-0">
 
                     <!-- Переключатель темы -->
                     <button type="button"
                             onclick="toggleTheme()"
-                            class="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-mono border border-paper-300 dark:border-carbon-800 hover:border-signal-500 dark:hover:border-signal-500 bg-paper-50 dark:bg-carbon-950 text-zinc-700 dark:text-zinc-300 transition-colors"
+                            class="flex items-center gap-1.5 px-2 sm:px-2.5 py-1 sm:py-1.5 text-[11px] sm:text-xs font-mono border border-paper-300 dark:border-carbon-800 hover:border-signal-500 dark:hover:border-signal-500 bg-paper-50 dark:bg-carbon-950 text-zinc-700 dark:text-zinc-300 transition-colors whitespace-nowrap"
                             title="Переключить тему">
-                        <span class="w-2 h-2 bg-zinc-400 dark:bg-signal-500"></span>
-                        <span class="hidden sm:inline text-zinc-500">ТЕМА:</span>
+                        <span class="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-zinc-400 dark:bg-signal-500 flex-shrink-0"></span>
+                        <span class="hidden md:inline text-zinc-500">ТЕМА:</span>
                         <span id="theme-label" class="font-bold text-zinc-900 dark:text-signal-400">DARK</span>
                     </button>
 
                     <!-- Авторизация -->
                     {% if user.is_authenticated %}
-                        <div class="flex items-center gap-2 pl-2 border-l border-paper-300 dark:border-carbon-800">
-                            <a href="{% url 'profile' %}" class="flex items-center gap-2 group pr-1" title="Личный кабинет">
+                        <div class="flex items-center gap-1.5 sm:gap-2 pl-1.5 sm:pl-2 border-l border-paper-300 dark:border-carbon-800">
+                            <a href="{% url 'profile' %}" class="flex items-center gap-2 group flex-shrink-0" title="Личный кабинет">
                                 {% if user.profile.avatar %}
-                                    <img src="{{ user.profile.avatar.url }}" alt="{{ user.username }}" class="w-7 h-7 object-cover border border-signal-500">
+                                    <img src="{{ user.profile.avatar.url }}" alt="{{ user.username }}" class="w-7 h-7 object-cover border border-signal-500 flex-shrink-0">
                                 {% else %}
-                                    <div class="w-7 h-7 bg-signal-500/15 border border-signal-500 text-signal-600 dark:text-signal-400 font-mono font-bold flex items-center justify-center text-xs">
+                                    <div class="w-7 h-7 bg-signal-500/15 border border-signal-500 text-signal-600 dark:text-signal-400 font-mono font-bold flex items-center justify-center text-xs flex-shrink-0">
                                         {{ user.username|slice:":1"|upper }}
                                     </div>
                                 {% endif %}
-                                <span class="hidden sm:inline font-mono text-xs font-semibold text-zinc-800 dark:text-zinc-200 group-hover:text-signal-600 dark:group-hover:text-signal-400 transition-colors truncate max-w-[130px]">
+                                <span class="hidden md:inline font-mono text-xs font-semibold text-zinc-800 dark:text-zinc-200 group-hover:text-signal-600 dark:group-hover:text-signal-400 transition-colors truncate max-w-[130px]">
                                     @{{ user.username }}
                                 </span>
                             </a>
@@ -187,19 +210,19 @@
                             <form method="post" action="{% url 'logout' %}" class="inline">
                                 {% csrf_token %}
                                 <button type="submit"
-                                        class="px-2.5 py-1.5 text-xs font-mono font-semibold border border-paper-300 dark:border-carbon-800 hover:border-red-500 dark:hover:border-red-500 bg-paper-50 dark:bg-carbon-950 text-zinc-600 dark:text-zinc-400 hover:text-red-600 dark:hover:text-red-400 transition-colors">
+                                        class="px-2 sm:px-2.5 py-1 sm:py-1.5 text-[11px] sm:text-xs font-mono font-semibold border border-paper-300 dark:border-carbon-800 hover:border-red-500 dark:hover:border-red-500 bg-paper-50 dark:bg-carbon-950 text-zinc-600 dark:text-zinc-400 hover:text-red-600 dark:hover:text-red-400 transition-colors whitespace-nowrap">
                                     ВЫХОД
                                 </button>
                             </form>
                         </div>
                     {% else %}
-                        <div class="flex items-center gap-2 pl-2 border-l border-paper-300 dark:border-carbon-800">
+                        <div class="flex items-center gap-1.5 sm:gap-2 pl-1.5 sm:pl-2 border-l border-paper-300 dark:border-carbon-800">
                             <a href="{% url 'login' %}"
-                               class="px-3 py-1.5 text-xs font-mono font-semibold border border-paper-300 dark:border-carbon-800 hover:border-signal-500 text-zinc-700 dark:text-zinc-300 hover:text-signal-600 dark:hover:text-signal-400 transition-colors">
+                               class="px-2 sm:px-3 py-1 sm:py-1.5 text-[11px] sm:text-xs font-mono font-semibold border border-paper-300 dark:border-carbon-800 hover:border-signal-500 text-zinc-700 dark:text-zinc-300 hover:text-signal-600 dark:hover:text-signal-400 transition-colors whitespace-nowrap">
                                 ВОЙТИ
                             </a>
                             <a href="{% url 'register' %}"
-                               class="px-3 py-1.5 text-xs font-mono font-bold bg-signal-500 hover:bg-signal-400 text-carbon-950 border border-signal-500 transition-colors">
+                               class="px-2 sm:px-3 py-1 sm:py-1.5 text-[11px] sm:text-xs font-mono font-bold bg-signal-500 hover:bg-signal-400 text-carbon-950 border border-signal-500 transition-colors whitespace-nowrap">
                                 РЕГИСТРАЦИЯ
                             </a>
                         </div>
@@ -212,7 +235,7 @@
 
     <!-- Системные уведомления Django -->
     {% if messages %}
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4 space-y-2 w-full">
+    <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 mt-4 space-y-2 w-full">
         {% for message in messages %}
         <div class="flex items-center justify-between px-4 py-2.5 border text-xs font-mono {% if 'error' in message.tags %}bg-red-500/10 border-red-500 text-red-700 dark:text-red-300{% elif 'success' in message.tags %}bg-signal-500/10 border-signal-500 text-signal-700 dark:text-signal-300{% else %}bg-zinc-500/10 border-zinc-500 text-zinc-700 dark:text-zinc-300{% endif %}" role="alert">
             <div class="flex items-center gap-2.5">
@@ -226,13 +249,13 @@
     {% endif %}
 
     <!-- Основной контент -->
-    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <main class="flex-grow max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-8">
         {% block content %}{% endblock %}
     </main>
 
     <!-- Минималистичный футер -->
     <footer class="mt-auto border-t border-paper-300 dark:border-carbon-800 bg-paper-100 dark:bg-carbon-900 py-4">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-center text-xs font-mono text-zinc-500 dark:text-zinc-400">
+        <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 flex items-center justify-center text-xs font-mono text-zinc-500 dark:text-zinc-400">
             <div class="flex items-center gap-2">
                 <span class="w-1.5 h-1.5 bg-signal-500"></span>
                 <span class="font-bold text-zinc-800 dark:text-zinc-200">PLAYLOG</span>
@@ -240,6 +263,20 @@
             </div>
         </div>
     </footer>
+
+    <!-- Общее модальное окно достижений -->
+    <div id="achievements-modal"
+         class="fixed inset-0 z-[100] hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 md:p-6"
+         onclick="if(event.target === this) closeAchievementsModal();">
+        <div id="achievements-modal-box" class="relative w-full max-w-4xl h-[88vh] bg-paper-100 dark:bg-carbon-900 border border-paper-300 dark:border-carbon-800 shadow-2xl flex flex-col overflow-hidden">
+            <!-- Контейнер для контента (заполняет всю высоту, внутри фиксированная шапка и скроллируемый список) -->
+            <div id="achievements-modal-body" class="flex flex-col h-full w-full overflow-hidden">
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальные окна -->
+    {% block modals %}{% endblock %}
 
     <!-- Скрипты темы и прокрутки -->
     <script>
@@ -269,6 +306,84 @@
             if (!strip) return;
             strip.scrollBy({ left: 320 * direction, behavior: 'smooth' });
         }
+
+        function openAchievementsModal(url, gameTitle) {
+            const modal = document.getElementById('achievements-modal');
+            const body = document.getElementById('achievements-modal-body');
+            if (!modal || !body) return;
+            modal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+            body.innerHTML = `
+                <div class="py-16 flex flex-col items-center justify-center gap-3 font-mono text-xs text-zinc-500">
+                    <span class="text-2xl animate-spin">⟳</span>
+                    <span class="font-bold text-zinc-700 dark:text-zinc-300">ЗАГРУЗКА ДОСТИЖЕНИЙ...</span>
+                    <span class="text-[11px] text-zinc-400">[${gameTitle}]</span>
+                </div>
+            `;
+            fetch(url)
+                .then(res => {
+                    if (!res.ok) throw new Error('Не удалось загрузить достижения или профиль закрыт.');
+                    return res.text();
+                })
+                .then(html => {
+                    body.innerHTML = html;
+                })
+                .catch(err => {
+                    body.innerHTML = `
+                        <div class="p-8 text-center font-mono text-xs text-red-500 space-y-2">
+                            <p class="font-bold uppercase tracking-wider">[ОШИБКА]</p>
+                            <p>${err.message}</p>
+                        </div>
+                    `;
+                });
+        }
+
+        function closeAchievementsModal() {
+            const modal = document.getElementById('achievements-modal');
+            if (modal) {
+                modal.classList.add('hidden');
+                document.body.style.overflow = '';
+            }
+        }
+
+        function handleAchIconError(img, fallbackUrl) {
+            if (fallbackUrl && fallbackUrl.trim() !== '' && img.src !== fallbackUrl) {
+                img.src = fallbackUrl;
+            } else {
+                img.style.display = 'none';
+                if (img.nextElementSibling) {
+                    img.nextElementSibling.style.display = 'flex';
+                }
+            }
+        }
+
+        function filterModalAchievements(filter, btn) {
+            const cards = document.querySelectorAll('.modal-achievement-card');
+            let visibleCount = 0;
+            cards.forEach(card => {
+                let show = false;
+                if (filter === 'all') {
+                    show = true;
+                } else if (filter === 'rare') {
+                    show = (card.dataset.rare === 'rare');
+                } else if (card.dataset.status === filter) {
+                    show = true;
+                }
+                card.style.display = show ? 'flex' : 'none';
+                if (show) visibleCount++;
+            });
+            const counter = document.getElementById('modal-visible-count');
+            if (counter) counter.textContent = visibleCount;
+
+            document.querySelectorAll('.modal-filter-btn').forEach(b => {
+                b.className = 'modal-filter-btn px-2.5 py-1 font-bold border border-paper-300 dark:border-carbon-800 bg-paper-200 dark:bg-carbon-950 text-zinc-700 dark:text-zinc-300 hover:border-signal-500 transition-colors';
+            });
+            btn.className = 'modal-filter-btn px-2.5 py-1 font-bold border border-signal-500 bg-signal-500 text-carbon-950 transition-colors';
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeAchievementsModal();
+        });
     </script>
 </body>
 </html>

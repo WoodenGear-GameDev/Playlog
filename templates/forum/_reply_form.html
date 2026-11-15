@@ -1,20 +1,20 @@
 <section id="reply-form" class="border border-paper-300 dark:border-carbon-800 bg-paper-100 dark:bg-carbon-900">
 
     <!-- Шапка формы -->
-    <div class="px-6 py-4 border-b border-paper-300 dark:border-carbon-800 bg-paper-50 dark:bg-carbon-950/60 flex items-center justify-between">
-        <div>
+    <div class="px-4 sm:px-6 py-4 border-b border-paper-300 dark:border-carbon-800 bg-paper-50 dark:bg-carbon-950/60 flex items-center justify-between gap-3">
+        <div class="min-w-0">
             <p class="font-mono text-[10px] uppercase tracking-widest text-signal-600 dark:text-signal-400">
                 [COMPOSE // MESSAGE]
             </p>
-            <h2 class="text-base sm:text-lg font-bold font-mono uppercase tracking-wider text-zinc-950 dark:text-white mt-0.5">
+            <h2 class="text-base sm:text-lg font-bold font-mono uppercase tracking-wider text-zinc-950 dark:text-white mt-0.5 truncate">
                 {{ form_title|default:"Ваш ответ" }}
             </h2>
         </div>
-        <span class="w-2 h-2 bg-signal-500"></span>
+        <span class="w-2 h-2 bg-signal-500 flex-shrink-0"></span>
     </div>
 
     {% if user.is_authenticated %}
-    <form method="post" class="p-6 space-y-5">
+    <form method="post" enctype="multipart/form-data" class="p-4 sm:p-6 space-y-5">
         {% csrf_token %}
 
         {% if reply_target %}
@@ -22,10 +22,10 @@
             <div class="text-zinc-600 dark:text-zinc-400 min-w-0">
                 <span class="text-zinc-500">В ответ на</span>
                 <strong class="text-signal-600 dark:text-signal-400">{% if reply_target.author_id %}@{% endif %}{{ reply_target.author_name }}</strong>:
-                <span class="text-zinc-700 dark:text-zinc-300">{{ reply_target.body|truncatechars:100 }}</span>
+                <span class="text-zinc-700 dark:text-zinc-300">{% if reply_target.body %}{{ reply_target.body|truncatechars:100 }}{% else %}[изображения]{% endif %}</span>
             </div>
-            <a href="?page={{ page.number }}#reply-form"
-               class="px-2 py-1 border border-paper-300 dark:border-carbon-800 hover:border-red-500 text-zinc-500 hover:text-red-500 uppercase font-bold text-[10px] flex-shrink-0 transition-colors">
+            <a href="{% if page %}?page={{ page.number }}{% endif %}#reply-form"
+               class="self-start sm:self-auto px-2 py-1 border border-paper-300 dark:border-carbon-800 hover:border-red-500 text-zinc-500 hover:text-red-500 uppercase font-bold text-[10px] flex-shrink-0 transition-colors">
                 ОТМЕНИТЬ ОТВЕТ ✕
             </a>
         </blockquote>
@@ -40,9 +40,10 @@
         </div>
         {% endif %}
 
-        {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
+        {% for hidden in form.hidden_fields %}{% if hidden.name != 'remove_images' %}{{ hidden }}{% endif %}{% endfor %}
 
         {% for field in form.visible_fields %}
+        {% if field.name != 'images' %}
         <div class="space-y-1.5">
             <label for="{{ field.id_for_label }}" class="block font-mono text-xs font-semibold uppercase tracking-wider text-zinc-700 dark:text-zinc-300">
                 {{ field.label }}
@@ -61,17 +62,67 @@
             </div>
             {% endif %}
         </div>
+        {% endif %}
         {% endfor %}
+
+        <!-- UI-обёртка прикрепления до 5 скриншотов -->
+        <div class="space-y-2.5" data-attachment-widget data-max-files="5">
+            <div class="flex flex-wrap items-center justify-between gap-1 font-mono">
+                <span class="text-xs font-semibold uppercase tracking-wider text-zinc-700 dark:text-zinc-300">
+                    Скриншоты (до 5 шт.)
+                </span>
+                <span class="text-[10px] text-zinc-400 dark:text-zinc-500">
+                    PNG / JPG / WEBP / GIF · ДО 8 МБ · ИЛИ CTRL+V
+                </span>
+            </div>
+
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-2.5 border border-paper-300 dark:border-carbon-800 bg-paper-50 dark:bg-carbon-950">
+                <div class="flex flex-wrap items-center gap-2.5">
+                    <label data-attachment-trigger
+                           class="inline-flex items-center justify-center gap-2 px-3.5 py-2 text-xs font-mono font-bold uppercase tracking-wider border border-signal-500/60 bg-signal-500/10 hover:bg-signal-500 text-signal-600 dark:text-signal-400 hover:text-carbon-950 dark:hover:text-carbon-950 cursor-pointer transition-colors">
+                        <span>+ ДОБАВИТЬ СКРИНШОТ</span>
+                        <input type="file" name="images" accept="image/*" multiple class="sr-only" data-attachment-input>
+                    </label>
+
+                    <span data-attachment-counter
+                          class="px-2 py-1 border border-paper-300 dark:border-carbon-800 bg-paper-100 dark:bg-carbon-900 font-mono text-[11px] font-bold text-zinc-500 dark:text-zinc-400">
+                        0 / 5
+                    </span>
+                </div>
+
+                <button type="button"
+                        data-attachment-clear-all
+                        class="hidden self-start sm:self-auto px-2.5 py-1.5 text-[10px] font-mono font-bold uppercase border border-paper-300 dark:border-carbon-800 hover:border-red-500 text-zinc-500 hover:text-red-500 transition-colors">
+                    ОЧИСТИТЬ ВСЁ ✕
+                </button>
+            </div>
+
+            <p data-attachment-warning class="hidden font-mono text-[11px] text-amber-600 dark:text-amber-400">
+                → Достигнут лимит: можно прикрепить не более 5 скриншотов.
+            </p>
+
+            {% if form.images.errors %}
+            <div class="text-xs font-mono text-red-600 dark:text-red-400 space-y-0.5">
+                {% for error in form.images.errors %}
+                    <p>→ {{ error }}</p>
+                {% endfor %}
+                <p class="text-zinc-500 dark:text-zinc-400">Выберите скриншоты заново: браузер не сохраняет выбранные файлы после ошибки.</p>
+            </div>
+            {% endif %}
+
+            <!-- Сетка предпросмотра -->
+            <div data-attachment-grid class="hidden grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2.5 pt-1"></div>
+        </div>
 
         <div class="flex justify-end">
             <button type="submit"
-                    class="px-5 py-2.5 text-xs font-mono font-bold uppercase tracking-wider bg-signal-500 hover:bg-signal-400 text-carbon-950 border border-signal-500 transition-colors">
+                    class="w-full sm:w-auto px-5 py-2.5 text-xs font-mono font-bold uppercase tracking-wider bg-signal-500 hover:bg-signal-400 text-carbon-950 border border-signal-500 transition-colors">
                 ОТПРАВИТЬ →
             </button>
         </div>
     </form>
     {% else %}
-    <div class="p-6 font-mono text-xs sm:text-sm text-zinc-600 dark:text-zinc-400">
+    <div class="p-4 sm:p-6 font-mono text-xs sm:text-sm text-zinc-600 dark:text-zinc-400">
         <a href="{% url 'login' %}?next={{ request.get_full_path|urlencode }}"
            class="font-bold text-signal-600 dark:text-signal-400 hover:underline">
             Войдите
@@ -80,3 +131,163 @@
     {% endif %}
 
 </section>
+
+{% if user.is_authenticated %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const section = document.getElementById('reply-form');
+    if (!section) return;
+
+    const widget = section.querySelector('[data-attachment-widget]');
+    if (!widget) return;
+
+    const maxFiles = parseInt(widget.dataset.maxFiles, 10) || 5;
+    const fileInput = widget.querySelector('[data-attachment-input]');
+    const triggerLabel = widget.querySelector('[data-attachment-trigger]');
+    const counterEl = widget.querySelector('[data-attachment-counter]');
+    const clearAllBtn = widget.querySelector('[data-attachment-clear-all]');
+    const warningEl = widget.querySelector('[data-attachment-warning]');
+    const gridEl = widget.querySelector('[data-attachment-grid]');
+    const textarea = section.querySelector('textarea');
+
+    let filesStore = [];
+    let objectUrls = [];
+
+    function formatSize(bytes) {
+        if (bytes < 1024) return bytes + ' B';
+        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + ' KB';
+        return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    }
+
+    function syncInputFiles() {
+        const dt = new DataTransfer();
+        filesStore.forEach((file) => dt.items.add(file));
+        fileInput.files = dt.files;
+    }
+
+    function renderPreviews() {
+        objectUrls.forEach((url) => URL.revokeObjectURL(url));
+        objectUrls = [];
+        gridEl.innerHTML = '';
+
+        const count = filesStore.length;
+        counterEl.textContent = `${count} / ${maxFiles}`;
+
+        if (count > 0) {
+            counterEl.classList.remove('text-zinc-500', 'dark:text-zinc-400', 'border-paper-300', 'dark:border-carbon-800');
+            counterEl.classList.add('text-signal-600', 'dark:text-signal-400', 'border-signal-500/50', 'bg-signal-500/10');
+            clearAllBtn.classList.remove('hidden');
+            gridEl.classList.remove('hidden');
+            gridEl.classList.add('grid');
+        } else {
+            counterEl.classList.add('text-zinc-500', 'dark:text-zinc-400', 'border-paper-300', 'dark:border-carbon-800');
+            counterEl.classList.remove('text-signal-600', 'dark:text-signal-400', 'border-signal-500/50', 'bg-signal-500/10');
+            clearAllBtn.classList.add('hidden');
+            gridEl.classList.add('hidden');
+            gridEl.classList.remove('grid');
+        }
+
+        if (count >= maxFiles) {
+            triggerLabel.classList.add('opacity-50', 'pointer-events-none');
+        } else {
+            triggerLabel.classList.remove('opacity-50', 'pointer-events-none');
+        }
+
+        filesStore.forEach((file, index) => {
+            const url = URL.createObjectURL(file);
+            objectUrls.push(url);
+
+            const card = document.createElement('div');
+            card.className = 'relative border border-paper-300 dark:border-carbon-800 bg-paper-50 dark:bg-carbon-950 p-1.5 flex flex-col justify-between gap-1.5';
+
+            card.innerHTML = `
+                <div class="relative w-full aspect-video bg-paper-200 dark:bg-carbon-900 overflow-hidden border border-paper-300/70 dark:border-carbon-800">
+                    <img src="${url}" alt="" class="w-full h-full object-cover">
+                    <button type="button"
+                            data-remove-index="${index}"
+                            title="Убрать скриншот"
+                            class="absolute top-1 right-1 w-5 h-5 bg-carbon-950/85 hover:bg-red-500 text-white border border-carbon-700 hover:border-red-500 font-mono text-[10px] font-bold flex items-center justify-center transition-colors">
+                        ✕
+                    </button>
+                </div>
+                <div class="flex items-center justify-between gap-1 font-mono text-[10px] text-zinc-500 px-0.5">
+                    <span class="truncate" title="${file.name}">${file.name}</span>
+                    <span class="flex-shrink-0 text-zinc-400">${formatSize(file.size)}</span>
+                </div>
+            `;
+
+            gridEl.appendChild(card);
+        });
+    }
+
+    function addFiles(incoming) {
+        const images = Array.from(incoming).filter((f) => f.type.startsWith('image/'));
+        if (!images.length) return;
+
+        let overflow = false;
+        for (const file of images) {
+            if (filesStore.length >= maxFiles) {
+                overflow = true;
+                break;
+            }
+            filesStore.push(file);
+        }
+
+        if (overflow) {
+            warningEl.classList.remove('hidden');
+        } else {
+            warningEl.classList.add('hidden');
+        }
+
+        syncInputFiles();
+        renderPreviews();
+    }
+
+    fileInput.addEventListener('change', () => {
+        const picked = Array.from(fileInput.files);
+        fileInput.value = '';
+        addFiles(picked);
+    });
+
+    gridEl.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-remove-index]');
+        if (!btn) return;
+        const idx = parseInt(btn.dataset.removeIndex, 10);
+        if (!isNaN(idx)) {
+            filesStore.splice(idx, 1);
+            warningEl.classList.add('hidden');
+            syncInputFiles();
+            renderPreviews();
+        }
+    });
+
+    clearAllBtn.addEventListener('click', () => {
+        filesStore = [];
+        fileInput.value = '';
+        warningEl.classList.add('hidden');
+        syncInputFiles();
+        renderPreviews();
+    });
+
+    if (textarea) {
+        textarea.addEventListener('paste', (e) => {
+            const items = e.clipboardData && e.clipboardData.items;
+            if (!items) return;
+            const pasted = [];
+            for (const item of items) {
+                if (item.type.startsWith('image/')) {
+                    const blob = item.getAsFile();
+                    if (!blob) continue;
+                    const ext = item.type.split('/')[1] || 'png';
+                    const stamp = Date.now().toString().slice(-4);
+                    pasted.push(new File([blob], `screen_${stamp}.${ext}`, { type: item.type }));
+                }
+            }
+            if (pasted.length) {
+                addFiles(pasted);
+            }
+        });
+    }
+});
+</script>
+{% endif %}

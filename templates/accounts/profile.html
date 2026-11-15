@@ -52,6 +52,11 @@
                     <span>РЕДАКТИРОВАТЬ ПРОФИЛЬ</span>
                     <span>→</span>
                 </a>
+                <a href="{% url 'user_profile' user.pk %}"
+                   class="inline-flex items-center gap-2 px-4 py-2 text-xs font-mono font-bold uppercase tracking-wider border border-paper-300 dark:border-carbon-800 hover:border-signal-500 bg-paper-100 dark:bg-carbon-900 text-zinc-700 dark:text-zinc-300 hover:text-signal-600 dark:hover:text-signal-400 transition-colors">
+                    <span>КАК МЕНЯ ВИДЯТ ДРУГИЕ</span>
+                    <span>→</span>
+                </a>
             </div>
         </section>
 
@@ -60,41 +65,57 @@
             <div class="p-6 space-y-4">
                 <div class="flex items-center justify-between border-b border-paper-300 dark:border-carbon-800 pb-3">
                     <div class="flex items-center gap-2">
-                        <span class="w-2 h-2 {% if profile.steam_id %}bg-signal-500{% else %}bg-zinc-400 dark:bg-zinc-600{% endif %}"></span>
+                        <span class="w-2 h-2 {% if steam_account.steam_id %}bg-signal-500{% else %}bg-zinc-400 dark:bg-zinc-600{% endif %}"></span>
                         <h2 class="text-sm sm:text-base font-bold font-mono uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
                             Интеграция Steam
                         </h2>
                     </div>
-                    <span class="font-mono text-[11px] {% if profile.steam_id %}text-signal-600 dark:text-signal-400 font-bold{% else %}text-zinc-500{% endif %}">
-                        {% if profile.steam_id %}[ПОДТВЕРЖДЁН]{% else %}[НЕ ПРИВЯЗАН]{% endif %}
+                    <span class="font-mono text-[11px] {% if steam_account.steam_id %}text-signal-600 dark:text-signal-400 font-bold{% else %}text-zinc-500{% endif %}">
+                        {% if steam_account.steam_id %}[ПРИВЯЗАН]{% else %}[НЕ ПРИВЯЗАН]{% endif %}
                     </span>
                 </div>
 
-                {% if profile.steam_id %}
-                    <div class="space-y-2 font-mono text-xs sm:text-sm">
-                        <p class="text-zinc-600 dark:text-zinc-400">
-                            Привязан аккаунт (подтверждён через Steam):
-                        </p>
+                {% if steam_account.steam_id %}
+                    <div class="space-y-3 font-mono text-xs sm:text-sm">
                         <div class="p-3 border border-paper-300 dark:border-carbon-800 bg-paper-50 dark:bg-carbon-950 flex items-center justify-between gap-2">
                             <span class="text-zinc-500 text-xs">STEAM_ID:</span>
-                            <a href="https://steamcommunity.com/profiles/{{ profile.steam_id }}"
+                            <a href="https://steamcommunity.com/profiles/{{ steam_account.steam_id }}"
                                target="_blank"
                                rel="noopener noreferrer"
                                class="font-bold text-signal-600 dark:text-signal-400 hover:underline truncate">
-                                {{ profile.steam_id }} ↗
+                                {{ steam_account.steam_id }} ↗
                             </a>
                         </div>
+                        {% if library.last_attempt_at and library.status == 'success' %}
+                        <p class="text-[11px] text-zinc-500 dark:text-zinc-400">
+                            Библиотека обновлена: {{ library.last_attempt_at|date:"d.m.Y H:i" }} (Всего игр: {{ library.total_games }})
+                        </p>
+                        {% endif %}
                     </div>
                 {% else %}
                     <p class="text-xs sm:text-sm font-mono text-zinc-600 dark:text-zinc-400 leading-relaxed">
-                        Steam не привязан. Привяжите аккаунт, чтобы автоматически импортировать библиотеку игр и наигранные часы.
+                        Steam не привязан. Привяжите аккаунт, чтобы автоматически импортировать библиотеку игр, наигранные часы и достижения.
                     </p>
                 {% endif %}
             </div>
 
-            <div class="px-6 py-4 border-t border-paper-300 dark:border-carbon-800 bg-paper-50 dark:bg-carbon-950/60 flex items-center justify-end">
-                {% if profile.steam_id %}
-                    <form method="post" action="{% url 'steam_unlink' %}">
+            <div class="px-6 py-4 border-t border-paper-300 dark:border-carbon-800 bg-paper-50 dark:bg-carbon-950/60 flex flex-wrap items-center justify-between gap-3">
+                {% if steam_account.steam_id %}
+                    <form method="post" action="{% url 'profile_privacy' %}"
+                          class="flex items-center gap-2 font-mono text-xs">
+                        {% csrf_token %}
+                        <input type="hidden" name="show_steam" value="{% if steam_account.show_steam %}0{% else %}1{% endif %}">
+                        <span class="text-zinc-600 dark:text-zinc-400 hidden sm:inline">
+                            В профиле:
+                        </span>
+                        <button type="submit"
+                                class="px-3 py-1.5 font-bold uppercase border border-paper-300 dark:border-carbon-800 hover:border-signal-500 text-zinc-700 dark:text-zinc-300 hover:text-signal-600 dark:hover:text-signal-400 transition-colors">
+                            {% if steam_account.show_steam %}ВИДЕН ВСЕМ (СКРЫТЬ){% else %}СКРЫТ (ПОКАЗАТЬ){% endif %}
+                        </button>
+                    </form>
+
+                    <form method="post" action="{% url 'steam_unlink' %}"
+                          onsubmit="return confirm('Вы уверены, что хотите отвязать Steam? Все данные библиотеки и выбитых достижений будут удалены.');">
                         {% csrf_token %}
                         <button type="submit"
                                 class="px-4 py-2 text-xs font-mono font-bold uppercase tracking-wider border border-paper-300 dark:border-carbon-800 hover:border-red-500 dark:hover:border-red-500 bg-paper-100 dark:bg-carbon-900 text-zinc-700 dark:text-zinc-300 hover:text-red-600 dark:hover:text-red-400 transition-colors">
@@ -102,11 +123,11 @@
                         </button>
                     </form>
                 {% else %}
-                    <form method="post" action="{% url 'steam_link' %}">
+                    <form method="post" action="{% url 'steam_link' %}" class="w-full flex justify-end">
                         {% csrf_token %}
                         <button type="submit"
                                 class="px-4 py-2 text-xs font-mono font-bold uppercase tracking-wider bg-signal-500 hover:bg-signal-400 text-carbon-950 border border-signal-500 transition-colors">
-                            ПРИВЯЗАТЬ STEAM →
+                            ВОЙТИ ЧЕРЕЗ STEAM →
                         </button>
                     </form>
                 {% endif %}
@@ -162,114 +183,338 @@
 
     <!-- Библиотека Steam -->
     <section id="library" class="space-y-4">
-        <div class="flex items-center justify-between pb-2 border-b border-paper-300 dark:border-carbon-800">
-            <div class="flex items-center gap-2.5">
-                <span class="font-mono text-xs px-1.5 py-0.5 bg-signal-500/15 border border-signal-500/40 text-signal-600 dark:text-signal-400 font-bold">
-                    #01
-                </span>
-                <h2 class="text-base sm:text-lg font-bold font-mono uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
-                    Библиотека Steam
-                </h2>
-                {% if page.paginator.count %}
-                <span class="font-mono text-xs text-zinc-500 dark:text-zinc-400">
-                    [{{ page.paginator.count }}]
-                </span>
+        {% if not steam_account or not steam_account.steam_id %}
+            <div class="flex items-center justify-between pb-2 border-b border-paper-300 dark:border-carbon-800">
+                <div class="flex items-center gap-2.5">
+                    <span class="font-mono text-xs px-1.5 py-0.5 bg-paper-200 dark:bg-carbon-800 text-zinc-500 font-bold">
+                        #01
+                    </span>
+                    <h2 class="text-base sm:text-lg font-bold font-mono uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
+                        Библиотека Steam
+                    </h2>
+                </div>
+            </div>
+            <div class="border border-paper-300 dark:border-carbon-800 bg-paper-100 dark:bg-carbon-900 p-8 text-center font-mono text-xs sm:text-sm text-zinc-600 dark:text-zinc-400 space-y-3">
+                <p>Steam не привязан. Привяжите аккаунт, чтобы увидеть здесь свою библиотеку игр.</p>
+                <form method="post" action="{% url 'steam_link' %}" class="inline-block">
+                    {% csrf_token %}
+                    <button type="submit"
+                            class="px-4 py-2 text-xs font-mono font-bold uppercase tracking-wider bg-signal-500 hover:bg-signal-400 text-carbon-950 border border-signal-500 transition-colors">
+                        ВОЙТИ ЧЕРЕЗ STEAM →
+                    </button>
+                </form>
+            </div>
+        {% elif library.status == 'not_synced' %}
+            <div class="flex items-center justify-between pb-2 border-b border-paper-300 dark:border-carbon-800">
+                <div class="flex items-center gap-2.5">
+                    <span class="inline-flex items-center gap-1.5 font-mono text-xs px-2 py-0.5 bg-signal-500/15 border border-signal-500/40 text-signal-600 dark:text-signal-400 font-bold animate-pulse">
+                        <span class="w-2 h-2 rounded-full bg-signal-500 animate-ping"></span>
+                        [СИНХРОНИЗАЦИЯ...]
+                    </span>
+                    <h2 class="text-base sm:text-lg font-bold font-mono uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
+                        Библиотека Steam
+                    </h2>
+                </div>
+            </div>
+            <div class="border border-paper-300 dark:border-carbon-800 bg-paper-100 dark:bg-carbon-900 p-12 text-center font-mono space-y-3">
+                <div class="inline-block animate-spin text-signal-500 text-2xl font-bold">⟳</div>
+                <p class="text-xs sm:text-sm text-zinc-900 dark:text-zinc-100 font-bold">
+                    Запрашиваем данные у Steam...
+                </p>
+                <p class="text-[11px] text-zinc-500 dark:text-zinc-400">
+                    Это займет всего пару секунд. Пожалуйста, подождите.
+                </p>
+                <form id="initial-steam-sync-form" method="post" action="{% url 'steam_sync' %}" class="pt-2">
+                    {% csrf_token %}
+                    <button type="submit"
+                            class="px-5 py-2 text-xs font-mono font-bold uppercase tracking-wider bg-signal-500 hover:bg-signal-400 text-carbon-950 border border-signal-500 transition-colors shadow-sm">
+                        СИНХРОНИЗИРОВАТЬ СЕЙЧАС ⟳
+                    </button>
+                </form>
+            </div>
+            <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                const form = document.getElementById('initial-steam-sync-form');
+                if (form) {
+                    const formData = new FormData(form);
+                    fetch(form.action, {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                        }
+                    })
+                    .then(res => res.json())
+                    .then(data => {
+                        window.location.reload();
+                    })
+                    .catch(() => {
+                        window.location.reload();
+                    });
+                }
+            });
+            </script>
+        {% elif library.status == 'syncing' %}
+            <div class="flex items-center justify-between pb-2 border-b border-paper-300 dark:border-carbon-800">
+                <div class="flex items-center gap-2.5">
+                    <span class="inline-flex items-center gap-1.5 font-mono text-xs px-2 py-0.5 bg-signal-500/15 border border-signal-500/40 text-signal-600 dark:text-signal-400 font-bold animate-pulse">
+                        <span class="w-2 h-2 rounded-full bg-signal-500 animate-ping"></span>
+                        [СИНХРОНИЗАЦИЯ...]
+                    </span>
+                    <h2 class="text-base sm:text-lg font-bold font-mono uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
+                        Библиотека Steam
+                    </h2>
+                </div>
+            </div>
+            <div class="border border-paper-300 dark:border-carbon-800 bg-paper-100 dark:bg-carbon-900 p-12 text-center font-mono space-y-3">
+                <div class="inline-block animate-spin text-signal-500 text-2xl font-bold">⟳</div>
+                <p class="text-xs sm:text-sm text-zinc-900 dark:text-zinc-100 font-bold">
+                    Запрашиваем данные у Steam...
+                </p>
+                <p class="text-[11px] text-zinc-500 dark:text-zinc-400">
+                    Это займет всего пару секунд. Пожалуйста, подождите.
+                </p>
+            </div>
+        {% elif library.status == 'private' %}
+            <div class="flex items-center justify-between pb-2 border-b border-paper-300 dark:border-carbon-800">
+                <div class="flex items-center gap-2.5">
+                    <span class="font-mono text-xs px-2 py-0.5 bg-amber-500/15 border border-amber-500/40 text-amber-600 dark:text-amber-400 font-bold">
+                        [ПРИВАТНЫЙ ПРОФИЛЬ]
+                    </span>
+                    <h2 class="text-base sm:text-lg font-bold font-mono uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
+                        Библиотека Steam
+                    </h2>
+                </div>
+                {% if steam_account.steam_id %}
+                <a href="https://steamcommunity.com/profiles/{{ steam_account.steam_id }}/edit/settings"
+                   target="_blank"
+                   rel="noopener noreferrer"
+                   class="inline-flex items-center gap-1.5 px-3 py-1 font-mono text-xs font-bold uppercase border border-amber-500/60 bg-amber-500/10 hover:bg-amber-500 text-amber-600 dark:text-amber-400 hover:text-carbon-950 dark:hover:text-carbon-950 transition-colors">
+                    <span>НАСТРОЙКИ STEAM</span>
+                    <span>↗</span>
+                </a>
                 {% endif %}
             </div>
-        </div>
+            <div class="border border-amber-500/40 bg-amber-500/5 p-6 sm:p-8 font-mono space-y-4">
+                <div class="flex items-start gap-3">
+                    <span class="text-amber-500 text-lg font-bold">⚠</span>
+                    <div class="space-y-1">
+                        <h3 class="text-xs sm:text-sm font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">
+                            Профиль или список игр скрыты приватностью
+                        </h3>
+                        <p class="text-xs text-zinc-600 dark:text-zinc-300 leading-relaxed">
+                            Ваш профиль или список игр закрыт настройками приватности Steam. Откройте доступ к общему профилю и списку игр в настройках Steam и повторите попытку.
+                        </p>
+                    </div>
+                </div>
+                <div class="pt-2 flex flex-wrap items-center justify-end gap-3">
+                    {% if steam_account.steam_id %}
+                    <a href="https://steamcommunity.com/profiles/{{ steam_account.steam_id }}/edit/settings"
+                       target="_blank"
+                       rel="noopener noreferrer"
+                       class="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-mono font-bold uppercase tracking-wider border border-paper-300 dark:border-carbon-700 bg-paper-100 dark:bg-carbon-900 hover:border-amber-500 text-zinc-700 dark:text-zinc-300 hover:text-amber-600 dark:hover:text-amber-400 transition-colors">
+                        <span>ОТКРЫТЬ НАСТРОЙКИ STEAM</span>
+                        <span>↗</span>
+                    </a>
+                    {% endif %}
+                    <form method="post" action="{% url 'steam_sync' %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="force" value="1">
+                        <button type="submit"
+                                class="px-4 py-2 text-xs font-mono font-bold uppercase tracking-wider border border-amber-500 bg-amber-500/10 hover:bg-amber-500 text-amber-600 dark:text-amber-400 hover:text-carbon-950 dark:hover:text-carbon-950 transition-colors">
+                            ПОВТОРИТЬ ПОПЫТКУ ⟳
+                        </button>
+                    </form>
+                </div>
+            </div>
+        {% elif library.status == 'error' %}
+            <div class="flex items-center justify-between pb-2 border-b border-paper-300 dark:border-carbon-800">
+                <div class="flex items-center gap-2.5">
+                    <span class="font-mono text-xs px-2 py-0.5 bg-red-500/15 border border-red-500/40 text-red-600 dark:text-red-400 font-bold">
+                        [ОШИБКА СИНХРОНИЗАЦИИ]
+                    </span>
+                    <h2 class="text-base sm:text-lg font-bold font-mono uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
+                        Библиотека Steam
+                    </h2>
+                </div>
+            </div>
+            <div class="border border-red-500/40 bg-red-500/5 p-6 sm:p-8 font-mono space-y-4">
+                <div class="flex items-start gap-3">
+                    <span class="text-red-500 text-lg font-bold">✕</span>
+                    <div class="space-y-1">
+                        <h3 class="text-xs sm:text-sm font-bold uppercase tracking-wider text-red-600 dark:text-red-400">
+                            Не удалось синхронизировать библиотеку
+                        </h3>
+                        <p class="text-xs text-zinc-600 dark:text-zinc-300 leading-relaxed">
+                            {{ library.error_message|default:"Произошла ошибка при обращении к серверам Steam API. Проверьте интернет-соединение или повторите попытку позже." }}
+                        </p>
+                    </div>
+                </div>
+                <div class="pt-2 flex justify-end">
+                    <form method="post" action="{% url 'steam_sync' %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="force" value="1">
+                        <button type="submit"
+                                class="px-4 py-2 text-xs font-mono font-bold uppercase tracking-wider border border-red-500 bg-red-500/10 hover:bg-red-500 text-red-600 dark:text-red-400 hover:text-white transition-colors">
+                            ПОВТОРИТЬ ПОПЫТКУ ⟳
+                        </button>
+                    </form>
+                </div>
+            </div>
+        {% elif library.status == 'success' %}
+            <div class="flex items-center justify-between pb-2 border-b border-paper-300 dark:border-carbon-800">
+                <div class="flex items-center gap-2.5">
+                    <span class="font-mono text-xs px-1.5 py-0.5 bg-signal-500/15 border border-signal-500/40 text-signal-600 dark:text-signal-400 font-bold">
+                        #01
+                    </span>
+                    <h2 class="text-base sm:text-lg font-bold font-mono uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
+                        Библиотека Steam
+                    </h2>
+                    <span class="font-mono text-xs text-zinc-500 dark:text-zinc-400">
+                        [{{ library.total_games }}]
+                    </span>
+                </div>
+                <div class="flex items-center gap-3">
+                    {% if library.last_attempt_at %}
+                    <span class="hidden md:inline font-mono text-[11px] text-zinc-500 dark:text-zinc-400">
+                        {{ library.last_attempt_at|date:"d.m.Y H:i" }}
+                    </span>
+                    {% endif %}
+                    <form method="post" action="{% url 'steam_sync' %}">
+                        {% csrf_token %}
+                        <button type="submit"
+                                id="steam-sync-btn"
+                                data-cooldown="{{ remaining_cooldown }}"
+                                {% if remaining_cooldown > 0 %}disabled{% endif %}
+                                class="px-3 py-1 text-xs font-mono font-bold uppercase tracking-wider border border-signal-500 bg-signal-500/10 hover:bg-signal-500 text-signal-600 dark:text-signal-400 hover:text-carbon-950 dark:hover:text-carbon-950 transition-colors {% if remaining_cooldown > 0 %}opacity-50 cursor-not-allowed{% endif %}">
+                            {% if remaining_cooldown > 0 %}ОБНОВИТЬ ({{ remaining_cooldown }}с){% else %}ОБНОВИТЬ ⟳{% endif %}
+                        </button>
+                    </form>
+                </div>
+            </div>
 
-        {% if page.paginator.count %}
-            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {% for entry in page %}
-                <a href="{% url 'library_open' entry.pk %}?page={{ page.number }}"
-                   class="group flex flex-col border border-paper-300 dark:border-carbon-800 bg-paper-100 dark:bg-carbon-900 hover:border-signal-500 dark:hover:border-signal-500 transition-colors">
+            {% if page.paginator.count %}
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    {% for entry in page %}
+                    <a href="{% url 'library_open' entry.pk %}?page={{ page.number }}"
+                       class="group flex flex-col border border-paper-300 dark:border-carbon-800 bg-paper-100 dark:bg-carbon-900 hover:border-signal-500 dark:hover:border-signal-500 transition-colors">
 
-                    <!-- Обложка игры (если есть в модели или по appid) -->
-                    <div class="relative w-full aspect-[16/9] border-b border-paper-300 dark:border-carbon-800 bg-paper-200 dark:bg-carbon-950 overflow-hidden">
-                        {% if entry.header_image %}
-                            <img src="{{ entry.header_image }}"
-                                 alt="{{ entry.display_name }}"
-                                 loading="lazy"
-                                 class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
-                        {% elif entry.steam_app_id %}
-                            <img src="https://cdn.akamai.steamstatic.com/steam/apps/{{ entry.steam_app_id }}/header.jpg"
-                                 alt="{{ entry.display_name }}"
-                                 loading="lazy"
-                                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
-                                 class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
-                            <div class="hidden w-full h-full no-cover-grid items-center justify-center text-zinc-400 dark:text-zinc-600 font-mono text-xs">
-                                НЕТ ОБЛОЖКИ
+                        <!-- Обложка игры (из каталога или API, пропорция 231/87 как в поиске Steam) -->
+                        <div class="relative w-full aspect-[231/87] border-b border-paper-300 dark:border-carbon-800 bg-paper-200 dark:bg-carbon-950 overflow-hidden">
+                            {% if entry.display_cover %}
+                                <img src="{{ entry.display_cover }}"
+                                     alt="{{ entry.display_name }}"
+                                     loading="lazy"
+                                     onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+                                     class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+                                <div class="hidden w-full h-full no-cover-grid items-center justify-center text-zinc-400 dark:text-zinc-600 font-mono text-xs">
+                                    {{ entry.display_name|slice:":15" }}
+                                </div>
+                            {% else %}
+                                <div class="w-full h-full no-cover-grid flex items-center justify-center text-zinc-400 dark:text-zinc-600 font-mono text-xs">
+                                    {{ entry.display_name|slice:":15" }}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Название и часы -->
+                        <div class="p-3.5 flex flex-col flex-grow justify-between gap-4">
+                            <h3 class="font-bold text-sm text-zinc-900 dark:text-zinc-100 line-clamp-1 group-hover:text-signal-600 dark:group-hover:text-signal-400 transition-colors" title="{{ entry.display_name }}">
+                                {{ entry.display_name }}
+                            </h3>
+
+                            <div class="pt-2.5 border-t border-paper-300 dark:border-carbon-800 flex items-center justify-between font-mono text-xs gap-2">
+                                <div class="flex items-center gap-1.5 flex-wrap">
+                                    <span class="px-2 py-0.5 bg-signal-500/10 border border-signal-500/30 text-signal-600 dark:text-signal-400 font-bold">
+                                        {{ entry.playtime_hours }} Ч
+                                    </span>
+                                    {% if entry.achievement_status == 'private' %}
+                                        <span class="px-1.5 py-0.5 bg-amber-500/15 border border-amber-500/40 text-amber-600 dark:text-amber-400 text-[10px]" title="Достижения скрыты приватностью Steam">
+                                            🔒 СКРЫТО
+                                        </span>
+                                    {% elif entry.achievements_total > 0 and entry.achievements_unlocked > 0 %}
+                                        {% if entry.achievements_unlocked == entry.achievements_total %}
+                                            <span class="px-1.5 py-0.5 bg-amber-500/15 border border-amber-500/40 text-amber-600 dark:text-amber-400 font-bold text-[10px]" title="Все достижения получены!">
+                                                ★ 100%
+                                            </span>
+                                        {% else %}
+                                            <span class="px-1.5 py-0.5 bg-paper-200 dark:bg-carbon-800 border border-paper-300 dark:border-carbon-700 text-zinc-600 dark:text-zinc-400 text-[10px]" title="Достижения: {{ entry.achievements_unlocked }} из {{ entry.achievements_total }} ({{ entry.achievements_progress_percent }}%)">
+                                                🏆 {{ entry.achievements_unlocked }}/{{ entry.achievements_total }}
+                                            </span>
+                                        {% endif %}
+                                    {% endif %}
+                                </div>
+                                <span class="text-zinc-500 dark:text-zinc-400 group-hover:text-signal-600 dark:group-hover:text-signal-400 font-bold transition-colors whitespace-nowrap">
+                                    ОТКРЫТЬ →
+                                </span>
                             </div>
+                        </div>
+
+                    </a>
+                    {% endfor %}
+                </div>
+
+                <!-- Пагинация -->
+                {% if page.has_other_pages %}
+                <div class="pt-4 flex flex-wrap items-center justify-between gap-3 border-t border-paper-300 dark:border-carbon-800 font-mono text-xs">
+                    <div>
+                        {% if page.has_previous %}
+                            <a href="?page={{ page.previous_page_number }}#library"
+                               class="inline-block px-3 py-1.5 font-bold border border-signal-500 bg-signal-500/10 hover:bg-signal-500 text-signal-600 dark:text-signal-400 hover:text-carbon-950 dark:hover:text-carbon-950 transition-colors">
+                                ← НАЗАД
+                            </a>
                         {% else %}
-                            <div class="w-full h-full no-cover-grid flex items-center justify-center text-zinc-400 dark:text-zinc-600 font-mono text-xs">
-                                НЕТ ОБЛОЖКИ
-                            </div>
+                            <span class="inline-block px-3 py-1.5 border border-paper-300 dark:border-carbon-800 text-zinc-400 dark:text-zinc-600 cursor-not-allowed">
+                                ← НАЗАД
+                            </span>
                         {% endif %}
                     </div>
 
-                    <!-- Название и часы -->
-                    <div class="p-3.5 flex flex-col flex-grow justify-between gap-4">
-                        <h3 class="font-bold text-sm text-zinc-900 dark:text-zinc-100 line-clamp-1 group-hover:text-signal-600 dark:group-hover:text-signal-400 transition-colors" title="{{ entry.display_name }}">
-                            {{ entry.display_name }}
-                        </h3>
+                    <span class="text-zinc-600 dark:text-zinc-400">
+                        СТРАНИЦА <strong class="text-zinc-950 dark:text-white">{{ page.number }}</strong> ИЗ <strong class="text-zinc-950 dark:text-white">{{ page.paginator.num_pages }}</strong>
+                    </span>
 
-                        <div class="pt-2.5 border-t border-paper-300 dark:border-carbon-800 flex items-center justify-between font-mono text-xs">
-                            <span class="px-2 py-0.5 bg-signal-500/10 border border-signal-500/30 text-signal-600 dark:text-signal-400 font-bold">
-                                {{ entry.playtime_hours }} Ч
+                    <div>
+                        {% if page.has_next %}
+                            <a href="?page={{ page.next_page_number }}#library"
+                               class="inline-block px-3 py-1.5 font-bold border border-signal-500 bg-signal-500/10 hover:bg-signal-500 text-signal-600 dark:text-signal-400 hover:text-carbon-950 dark:hover:text-carbon-950 transition-colors">
+                                ВПЕРЁД →
+                            </a>
+                        {% else %}
+                            <span class="inline-block px-3 py-1.5 border border-paper-300 dark:border-carbon-800 text-zinc-400 dark:text-zinc-600 cursor-not-allowed">
+                                ВПЕРЁД →
                             </span>
-                            <span class="text-zinc-500 dark:text-zinc-400 group-hover:text-signal-600 dark:group-hover:text-signal-400 font-bold transition-colors">
-                                ОТКРЫТЬ →
-                            </span>
-                        </div>
+                        {% endif %}
                     </div>
-
-                </a>
-                {% endfor %}
-            </div>
-
-            <!-- Пагинация -->
-            {% if page.has_other_pages %}
-            <div class="pt-4 flex flex-wrap items-center justify-between gap-3 border-t border-paper-300 dark:border-carbon-800 font-mono text-xs">
-                <div>
-                    {% if page.has_previous %}
-                        <a href="?page={{ page.previous_page_number }}#library"
-                           class="inline-block px-3 py-1.5 font-bold border border-signal-500 bg-signal-500/10 hover:bg-signal-500 text-signal-600 dark:text-signal-400 hover:text-carbon-950 dark:hover:text-carbon-950 transition-colors">
-                            ← НАЗАД
-                        </a>
-                    {% else %}
-                        <span class="inline-block px-3 py-1.5 border border-paper-300 dark:border-carbon-800 text-zinc-400 dark:text-zinc-600 cursor-not-allowed">
-                            ← НАЗАД
-                        </span>
-                    {% endif %}
                 </div>
-
-                <span class="text-zinc-600 dark:text-zinc-400">
-                    СТРАНИЦА <strong class="text-zinc-950 dark:text-white">{{ page.number }}</strong> ИЗ <strong class="text-zinc-950 dark:text-white">{{ page.paginator.num_pages }}</strong>
-                </span>
-
-                <div>
-                    {% if page.has_next %}
-                        <a href="?page={{ page.next_page_number }}#library"
-                           class="inline-block px-3 py-1.5 font-bold border border-signal-500 bg-signal-500/10 hover:bg-signal-500 text-signal-600 dark:text-signal-400 hover:text-carbon-950 dark:hover:text-carbon-950 transition-colors">
-                            ВПЕРЁД →
-                        </a>
-                    {% else %}
-                        <span class="inline-block px-3 py-1.5 border border-paper-300 dark:border-carbon-800 text-zinc-400 dark:text-zinc-600 cursor-not-allowed">
-                            ВПЕРЁД →
-                        </span>
-                    {% endif %}
+                {% endif %}
+            {% else %}
+                <div class="border border-paper-300 dark:border-carbon-800 bg-paper-100 dark:bg-carbon-900 p-8 text-center font-mono text-xs sm:text-sm text-zinc-600 dark:text-zinc-400">
+                    В вашей библиотеке Steam нет игр.
                 </div>
-            </div>
             {% endif %}
 
-        {% elif profile.steam_id %}
-            <div class="border border-paper-300 dark:border-carbon-800 bg-paper-100 dark:bg-carbon-900 p-8 text-center font-mono text-xs sm:text-sm text-zinc-600 dark:text-zinc-400">
-                Библиотека пока пуста.
-            </div>
-        {% else %}
-            <div class="border border-paper-300 dark:border-carbon-800 bg-paper-100 dark:bg-carbon-900 p-8 text-center font-mono text-xs sm:text-sm text-zinc-600 dark:text-zinc-400">
-                Привяжите Steam, чтобы увидеть здесь свою библиотеку игр.
-            </div>
+            <script>
+            (function() {
+                var btn = document.getElementById('steam-sync-btn');
+                if (!btn) return;
+                var cd = parseInt(btn.getAttribute('data-cooldown') || '0', 10);
+                if (cd > 0) {
+                    btn.disabled = true;
+                    var timer = setInterval(function() {
+                        cd--;
+                        if (cd <= 0) {
+                            clearInterval(timer);
+                            btn.disabled = false;
+                            btn.textContent = 'ОБНОВИТЬ ⟳';
+                            btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                        } else {
+                            btn.textContent = 'ОБНОВИТЬ (' + cd + 'с)';
+                        }
+                    }, 1000);
+                }
+            })();
+            </script>
         {% endif %}
     </section>
 

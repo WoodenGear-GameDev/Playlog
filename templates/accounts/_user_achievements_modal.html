@@ -1,0 +1,182 @@
+<div class="flex flex-col h-full w-full overflow-hidden bg-paper-100 dark:bg-carbon-900">
+    <!-- ФИКСИРОВАННАЯ ШАПКА: никогда не уезжает при скролле -->
+    <div class="flex-shrink-0 p-4 sm:p-5 border-b border-paper-300 dark:border-carbon-800 bg-paper-50 dark:bg-carbon-950 space-y-3">
+        <div class="flex items-center justify-between gap-3">
+            <span class="font-mono text-[10px] uppercase tracking-widest text-signal-600 dark:text-signal-400">
+                {% if owner %}
+                    [ACHIEVEMENTS // @{{ owner.username }}]
+                {% else %}
+                    [ACHIEVEMENTS // CATALOG]
+                {% endif %}
+            </span>
+            <div class="flex items-center gap-3">
+                {% if game %}
+                <a href="{% url 'game_detail' game.pk %}"
+                   class="hidden sm:inline font-mono text-xs text-signal-600 dark:text-signal-400 hover:underline">
+                    К странице игры →
+                </a>
+                {% endif %}
+                <button type="button"
+                        onclick="closeAchievementsModal()"
+                        title="Закрыть окно (Esc)"
+                        class="w-7 h-7 flex items-center justify-center font-mono font-bold text-xs text-zinc-500 hover:text-signal-600 dark:hover:text-signal-400 border border-paper-300 dark:border-carbon-800 hover:border-signal-500 bg-paper-100 dark:bg-carbon-900 transition-colors">
+                    ✕
+                </button>
+            </div>
+        </div>
+
+        <h3 class="text-lg sm:text-xl font-bold font-mono uppercase tracking-tight text-zinc-950 dark:text-white truncate">
+            {% if game %}{{ game.title }}{% elif library_entry %}{{ library_entry.display_name }}{% else %}Достижения игры{% endif %}
+        </h3>
+
+        <!-- Прогресс -->
+        {% if is_user_progress %}
+        <div class="space-y-1.5 pt-0.5">
+            <div class="flex items-center justify-between font-mono text-xs">
+                <span class="text-zinc-500 dark:text-zinc-400">
+                    Прогресс получения:
+                </span>
+                <span class="font-bold {% if unlocked_total == ach_total and ach_total > 0 %}text-amber-500 dark:text-amber-400{% else %}text-signal-600 dark:text-signal-400{% endif %}">
+                    {{ unlocked_total }} / {{ ach_total }} ({{ percent }}%)
+                </span>
+            </div>
+            <div class="w-full bg-paper-300 dark:bg-carbon-900 h-2 border border-paper-300 dark:border-carbon-800 overflow-hidden">
+                <div class="{% if unlocked_total == ach_total and ach_total > 0 %}bg-amber-500{% else %}bg-signal-500{% endif %} h-full transition-all duration-300"
+                     style="width: {{ percent }}%;"></div>
+            </div>
+        </div>
+        {% else %}
+        <div class="space-y-2 pt-0.5 font-mono text-xs text-zinc-500 dark:text-zinc-400">
+            <div class="p-2 border border-paper-300 dark:border-carbon-800 bg-paper-200/50 dark:bg-carbon-950 flex items-center justify-between gap-2">
+                <span class="text-zinc-700 dark:text-zinc-300">ℹ Этой игры нет в вашей библиотеке, показана общая статистика</span>
+                <span>Всего: <strong class="text-zinc-900 dark:text-zinc-100">{{ ach_total }}</strong></span>
+            </div>
+            {% if not request.user.is_authenticated %}
+            <div class="text-[11px] text-right"><a href="{% url 'login' %}" class="text-signal-600 dark:text-signal-400 hover:underline">Войдите</a>, чтобы отслеживать прогресс</div>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <!-- Кнопки фильтрации -->
+        {% if achievements %}
+        <div class="flex items-center gap-2 pt-1 font-mono text-xs flex-wrap">
+            <button type="button"
+                    onclick="filterModalAchievements('all', this)"
+                    class="modal-filter-btn px-2.5 py-1 font-bold border border-signal-500 bg-signal-500 text-carbon-950 transition-colors">
+                ВСЕ ({{ ach_total }})
+            </button>
+            {% if is_user_progress %}
+            <button type="button"
+                    onclick="filterModalAchievements('unlocked', this)"
+                    class="modal-filter-btn px-2.5 py-1 font-bold border border-paper-300 dark:border-carbon-800 bg-paper-200 dark:bg-carbon-950 text-zinc-700 dark:text-zinc-300 hover:border-signal-500 transition-colors">
+                ВЫБИТО ({{ unlocked_total }})
+            </button>
+            <button type="button"
+                    onclick="filterModalAchievements('locked', this)"
+                    class="modal-filter-btn px-2.5 py-1 font-bold border border-paper-300 dark:border-carbon-800 bg-paper-200 dark:bg-carbon-950 text-zinc-700 dark:text-zinc-300 hover:border-signal-500 transition-colors">
+                НЕ ВЫБИТО ({{ locked_total }})
+            </button>
+            {% endif %}
+            <button type="button"
+                    onclick="filterModalAchievements('rare', this)"
+                    class="modal-filter-btn px-2.5 py-1 font-bold border border-paper-300 dark:border-carbon-800 bg-paper-200 dark:bg-carbon-950 text-zinc-700 dark:text-zinc-300 hover:border-signal-500 transition-colors">
+                РЕДКИЕ ★ ({{ rare_total }})
+            </button>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- СКРОЛЛИРУЕМЫЙ СПИСОК КАРТОЧЕК: с кастомным скроллбаром -->
+    <div class="flex-grow overflow-y-auto custom-scroll p-4 sm:p-5">
+        {% if achievements %}
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {% for ach in achievements %}
+                <div class="modal-achievement-card border p-3 flex gap-3 items-start font-mono text-xs transition-colors {% if ach.is_unlocked %}border-paper-300 dark:border-carbon-800 bg-paper-50 dark:bg-carbon-950/80{% else %}border-paper-300/60 dark:border-carbon-800/40 bg-paper-200/40 dark:bg-carbon-950/40 {% if is_user_progress %}opacity-75{% endif %}{% endif %}"
+                     data-status="{% if ach.is_unlocked %}unlocked{% else %}locked{% endif %}"
+                     data-rare="{% if ach.is_ultra_rare or ach.is_rare %}rare{% endif %}">
+                    <!-- Иконка с отказоустойчивой загрузкой -->
+                    <div class="relative w-12 h-12 flex-shrink-0 border border-paper-300 dark:border-carbon-800 bg-paper-200 dark:bg-carbon-950 overflow-hidden flex items-center justify-center">
+                        {% if is_user_progress %}
+                            {% if ach.is_unlocked %}
+                                <img src="{{ ach.icon_url|default:ach.icon_gray_url }}"
+                                     alt="{{ ach.name }}"
+                                     loading="lazy"
+                                     onerror="handleAchIconError(this, '{{ ach.icon_gray_url|escapejs }}')"
+                                     class="w-full h-full object-cover">
+                            {% else %}
+                                <img src="{{ ach.icon_gray_url|default:ach.icon_url }}"
+                                     alt="{{ ach.name }}"
+                                     loading="lazy"
+                                     onerror="handleAchIconError(this, '{{ ach.icon_url|escapejs }}')"
+                                     class="w-full h-full object-cover grayscale opacity-50">
+                            {% endif %}
+                        {% else %}
+                            <img src="{{ ach.icon_url|default:ach.icon_gray_url }}"
+                                 alt="{{ ach.name }}"
+                                 loading="lazy"
+                                 onerror="handleAchIconError(this, '{{ ach.icon_gray_url|escapejs }}')"
+                                 class="w-full h-full object-cover">
+                        {% endif %}
+                        <div class="hidden w-full h-full no-cover-grid items-center justify-center font-mono text-sm {% if ach.is_unlocked %}text-signal-500{% else %}text-zinc-400 dark:text-zinc-600{% endif %}">
+                            {% if ach.is_ultra_rare %}★{% elif ach.is_rare %}◆{% else %}🏆{% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Текстовое описание -->
+                    <div class="flex-grow min-w-0 space-y-1">
+                        <div class="flex items-center justify-between gap-1">
+                            <h4 class="font-bold text-xs truncate {% if ach.is_unlocked %}text-zinc-900 dark:text-zinc-100{% elif is_user_progress %}text-zinc-500 dark:text-zinc-400{% else %}text-zinc-900 dark:text-zinc-100{% endif %}"
+                                title="{{ ach.name }}">
+                                {{ ach.name }}
+                            </h4>
+                            {% if is_user_progress %}
+                                {% if ach.is_unlocked %}
+                                    <span class="px-1.5 py-0.2 bg-emerald-500/15 border border-emerald-500/40 text-emerald-600 dark:text-emerald-400 font-bold text-[9px] uppercase whitespace-nowrap">
+                                        ВЫБИТО ✓
+                                    </span>
+                                {% else %}
+                                    <span class="px-1.5 py-0.2 bg-paper-300 dark:bg-carbon-800 text-zinc-500 text-[9px] uppercase whitespace-nowrap">
+                                        НЕТ
+                                    </span>
+                                {% endif %}
+                            {% endif %}
+                        </div>
+
+                        {% if ach.description %}
+                        <p class="text-[11px] text-zinc-600 dark:text-zinc-400 line-clamp-2 leading-tight">
+                            {{ ach.description }}
+                        </p>
+                        {% endif %}
+
+                        <div class="pt-1 flex items-center justify-between text-[10px] text-zinc-500">
+                            {% if ach.is_ultra_rare %}
+                                <span class="text-amber-600 dark:text-amber-400 font-bold">★ Ультраредкое: {{ ach.global_percent }}%</span>
+                            {% elif ach.is_rare %}
+                                <span class="text-purple-600 dark:text-purple-400 font-bold">★ Редкое: {{ ach.global_percent }}%</span>
+                            {% elif ach.global_percent > 0 %}
+                                <span>{{ ach.global_percent }}% игроков</span>
+                            {% else %}
+                                <span>Скрытое</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="p-8 border border-paper-300 dark:border-carbon-800 bg-paper-50 dark:bg-carbon-950 text-center font-mono text-xs text-zinc-500">
+                <p>У этой игры пока нет достижений или они ещё не синхронизированы из Steam.</p>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- ФИКСИРОВАННЫЙ ФУТЕР: статус-бар -->
+    <div class="flex-shrink-0 px-4 sm:px-5 py-2.5 border-t border-paper-300 dark:border-carbon-800 bg-paper-50 dark:bg-carbon-950/80 flex items-center justify-between font-mono text-xs text-zinc-500">
+        <span>ПОКАЗАНО: <strong id="modal-visible-count" class="text-zinc-900 dark:text-zinc-100">{{ ach_total }}</strong> ИЗ {{ ach_total }}</span>
+        <button type="button"
+                onclick="closeAchievementsModal()"
+                class="hover:text-signal-600 dark:hover:text-signal-400 font-bold transition-colors uppercase">
+            [ESC — ЗАКРЫТЬ]
+        </button>
+    </div>
+</div>
