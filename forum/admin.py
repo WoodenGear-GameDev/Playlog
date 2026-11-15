@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Post, PostImage, Topic
+from .models import GameInvite, Post, PostImage, Topic
 
 
 @admin.register(Topic)
@@ -17,6 +17,21 @@ class PostImageInline(admin.TabularInline):
 
     def has_add_permission(self, request, obj=None):
         return False
+
+@admin.register(GameInvite)
+class GameInviteAdmin(admin.ModelAdmin):
+    list_display = ('game', 'author', 'short_description', 'created_at', 'expires_at', 'closed_at', 'active')
+    list_filter = ('game',)
+    search_fields = ('description', 'author__username')
+    raw_id_fields = ('game', 'author')
+
+    @admin.display(description='Описание')
+    def short_description(self, obj):
+        return obj.description[:50]
+
+    @admin.display(boolean=True, description='Активно')
+    def active(self, obj):
+        return obj.is_active
 
 
 @admin.register(Post)

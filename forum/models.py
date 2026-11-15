@@ -132,6 +132,44 @@ class PostImage(models.Model):
     def __str__(self):
         return f'Изображение {self.pk} к сообщению {self.post_id}'
 
+class InviteQuerySet(models.QuerySet):
+    def active(self):
+        return self.filter(closed_at__isnull=True, expires_at__gt=timezone.now())
+
+class GameInvite(models.Model):
+    game = models.ForeignKey(
+        'catalog.Game',
+        on_delete=models.CASCADE,
+        related_name='invites',
+        verbose_name='Игра',
+    )
+    author = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='game_invites',
+        verbose_name='Автор',
+    )
+    description = models.CharField('Описание', max_length=300)
+    link = models.CharField('Ссылка', max_length=300, blank=True)
+    join_code = models.CharField('Код лобби или адрес сервера', max_length=100, blank=True)
+    created_at = models.DateTimeField('Создано', auto_now_add=True)
+    expires_at = models.DateTimeField('Действует до', db_index=True)
+    closed_at = models.DateTimeField('Завершено досрочно', null=True, blank=True)
+
+    objects = InviteQuerySet.as_manager()
+
+    class Meta:
+        verbose_name = 'Приглашение'
+        verbose_name_plural = 'Приглашения'
+        ordering = ['-created_at', '-pk']
+
+    def __str__(self):
+        return f'{self.author} → {self.game}: {self.description[:40]}'
+
+    @property
+    def is_active(self):
+        return self.closed_at is None and self.expires_at > timezone.now()
+
 
 @receiver(post_delete, sender=PostImage)
 def delete_image_file(sender, instance, **kwargs):
