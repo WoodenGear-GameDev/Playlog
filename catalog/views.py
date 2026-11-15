@@ -49,6 +49,10 @@ def _search_games(query):
     return [pk for _, pk in found]
 
 
+from .steam_service import fetch_app_details, search_steam_games
+from .sync import sync_game
+
+
 def index(request):
     q = request.GET.get('q', '').strip()[:100]
     if q:
@@ -56,10 +60,31 @@ def index(request):
         page = paginator.get_page(request.GET.get('page'))
         games = Game.objects.in_bulk(list(page.object_list))
         results = [games[pk] for pk in page.object_list if pk in games]
+
+        # Ищем игры в Steam
+        steam_items = search_steam_games(q)
+        existing_map = dict(
+            Game.objects.filter(
+                steam_app_id__in=[it['steam_app_id'] for it in steam_items]
+            ).values_list('steam_app_id', 'pk')
+        )
+        steam_results = []
+        for it in steam_items:
+            appid = it['steam_app_id']
+            existing_pk = existing_map.get(appid)
+            steam_results.append({
+                'steam_app_id': appid,
+                'title': it['title'],
+                'header_image': it['header_image'],
+                'in_catalog': bool(existing_pk),
+                'game_pk': existing_pk,
+            })
+
         return render(request, 'catalog/index.html', {
             'q': q,
             'page': page,
             'results': results,
+            'steam_results': steam_results,
         })
 
     categories = Category.objects.prefetch_related('games')
@@ -67,6 +92,32 @@ def index(request):
     return render(request, 'catalog/index.html', {
         'categories': categories,
         'uncategorized': uncategorized,
+    })
+
+
+def steam_game_import(request, steam_app_id):
+    """Импортирует игру из Steam в каталог с подтверждением."""
+    game = Game.objects.filter(steam_app_id=steam_app_id).first()
+    if game:
+        return redirect('game_detail', pk=game.pk)
+
+    details = fetch_app_details(steam_app_id)
+    if not details:
+        messages.error(request, 'Не удалось получить данные об игре из Steam.')
+        return redirect('home')
+
+    if request.method == 'POST':
+        game = Game.objects.create(
+            steam_app_id=steam_app_id,
+            title=details.get('title', f'Steam app {steam_app_id}'),
+        )
+        sync_game(game, overwrite=True)
+        messages.success(request, f'Игра «{game.title}» успешно добавлена в каталог.')
+        return redirect('game_detail', pk=game.pk)
+
+    return render(request, 'catalog/game_add_confirm.html', {
+        'details': details,
+        'steam_app_id': steam_app_id,
     })
 
 

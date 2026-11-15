@@ -219,15 +219,7 @@ def library_open(request, pk):
     if game:
         return redirect('game_detail', pk=game.pk)
 
-    if request.method == 'POST':
-        from catalog.sync import sync_game
-
-        game = Game.objects.create(steam_app_id=entry.steam_app_id, title=entry.name)
-        sync_game(game)
-        messages.success(request, f'Игра «{game.title}» успешно добавлена в каталог.')
-        return redirect('game_detail', pk=game.pk)
-
-    return render(request, 'accounts/library_add_confirm.html', {'entry': entry})
+    return redirect('steam_game_import', steam_app_id=entry.steam_app_id)
 
 class PasswordChange(SuccessMessageMixin, auth_views.PasswordChangeView):
     template_name = 'accounts/password_change.html'

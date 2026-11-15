@@ -83,3 +83,38 @@ def fetch_app_details(app_id):
         'header_image': game_info.get('header_image', ''),
         'categories': genres,
     }
+
+
+def search_steam_games(query: str, limit: int = 12):
+    """Ищет игры в Steam Store Search API.
+
+    Возвращает список словарей:
+        [{'steam_app_id': int, 'title': str, 'header_image': str}, ...]
+    """
+    if not query or not query.strip():
+        return []
+
+    url = 'https://store.steampowered.com/api/storesearch/'
+    params = {'term': query.strip(), 'l': 'russian', 'cc': 'ru'}
+    try:
+        response = requests.get(url, params=params, timeout=5)
+        response.raise_for_status()
+        data = response.json()
+    except Exception as e:
+        logger.warning('Failed to search Steam games for "%s": %s', query, e)
+        return []
+
+    items = data.get('items', [])
+    results = []
+    for item in items[:limit]:
+        appid = item.get('id')
+        name = item.get('name')
+        if not appid or not name:
+            continue
+        results.append({
+            'steam_app_id': appid,
+            'title': name,
+            'header_image': item.get('tiny_image', ''),
+        })
+    return results
+

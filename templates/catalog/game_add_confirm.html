@@ -1,0 +1,87 @@
+{% extends 'base.html' %}
+
+{% block title %}Добавить игру: {{ details.title }} // PLAYLOG{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto my-6 sm:my-12">
+    <div class="border border-signal-500/60 bg-paper-100 dark:bg-carbon-900 shadow-lg">
+
+        <!-- Шапка диалога -->
+        <div class="px-6 py-4 border-b border-paper-300 dark:border-carbon-800 bg-signal-500/10 flex items-center justify-between">
+            <div>
+                <p class="font-mono text-[10px] uppercase tracking-widest text-signal-600 dark:text-signal-400">
+                    [CATALOG // IMPORT_FROM_STEAM]
+                </p>
+                <h1 class="text-xl font-bold font-mono uppercase tracking-tight text-zinc-950 dark:text-white mt-0.5">
+                    Добавить игру в каталог?
+                </h1>
+            </div>
+            <span class="px-2 py-0.5 font-mono text-[10px] font-bold bg-signal-500 text-carbon-950">
+                STEAM
+            </span>
+        </div>
+
+        <div class="p-6 space-y-5">
+            <!-- Превью обложки -->
+            {% if details.header_image %}
+            <div class="w-full aspect-[460/215] bg-paper-200 dark:bg-carbon-950 border border-paper-300 dark:border-carbon-800 overflow-hidden">
+                <img src="{{ details.header_image }}" alt="{{ details.title }}" class="w-full h-full object-cover">
+            </div>
+            {% endif %}
+
+            <!-- Основная информация -->
+            <div class="space-y-3 font-mono">
+                <div class="flex flex-wrap items-baseline justify-between gap-2 border-b border-paper-300 dark:border-carbon-800 pb-2">
+                    <h2 class="text-xl font-bold text-zinc-950 dark:text-white">
+                        {{ details.title }}
+                    </h2>
+                    <span class="text-xs text-zinc-500 dark:text-zinc-400">
+                        Steam AppID: <strong class="text-zinc-700 dark:text-zinc-300">{{ steam_app_id }}</strong>
+                    </span>
+                </div>
+
+                {% if details.categories %}
+                <div class="flex flex-wrap gap-1.5 items-center">
+                    <span class="text-xs text-zinc-500">Жанры:</span>
+                    {% for cat in details.categories %}
+                        <span class="px-2 py-0.5 text-[11px] bg-paper-200 dark:bg-carbon-800 text-zinc-800 dark:text-zinc-200 border border-paper-300 dark:border-carbon-700">
+                            {{ cat }}
+                        </span>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                {% if details.release_date %}
+                <p class="text-xs text-zinc-600 dark:text-zinc-400">
+                    Дата выхода: <strong class="text-zinc-900 dark:text-zinc-200">{{ details.release_date|date:"d E Y" }}</strong>
+                </p>
+                {% endif %}
+
+                {% if details.description %}
+                <div class="p-3.5 bg-paper-50 dark:bg-carbon-950 border border-paper-300 dark:border-carbon-800 text-xs sm:text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed max-h-48 overflow-y-auto">
+                    {{ details.description|striptags }}
+                </div>
+                {% endif %}
+            </div>
+
+            <p class="font-mono text-xs text-zinc-500 dark:text-zinc-400">
+                После добавления игра появится в общем каталоге. Вы сразу сможете выставить ей оценку, написать отзыв и создать тему на форуме или написать в чат.
+            </p>
+
+            <!-- Кнопки действий -->
+            <form method="post" class="flex flex-col-reverse sm:flex-row items-center justify-end gap-3 pt-2">
+                {% csrf_token %}
+                <a href="{{ request.META.HTTP_REFERER|default:'/' }}"
+                   class="w-full sm:w-auto text-center px-4 py-2.5 text-xs font-mono font-semibold uppercase tracking-wider border border-paper-300 dark:border-carbon-800 hover:border-zinc-500 bg-paper-50 dark:bg-carbon-950 text-zinc-700 dark:text-zinc-300 transition-colors">
+                    ОТМЕНА
+                </a>
+                <button type="submit"
+                        class="w-full sm:w-auto px-5 py-2.5 text-xs font-mono font-bold uppercase tracking-wider bg-signal-500 hover:bg-signal-400 text-carbon-950 border border-signal-500 transition-colors">
+                    ДОБАВИТЬ В КАТАЛОГ И ОБСУДИТЬ →
+                </button>
+            </form>
+        </div>
+
+    </div>
+</div>
+{% endblock %}
