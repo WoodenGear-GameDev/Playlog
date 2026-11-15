@@ -285,6 +285,15 @@
                         Библиотека Steam
                     </h2>
                 </div>
+                {% if steam_account.steam_id %}
+                <a href="https://steamcommunity.com/profiles/{{ steam_account.steam_id }}/edit/settings"
+                   target="_blank"
+                   rel="noopener noreferrer"
+                   class="inline-flex items-center gap-1.5 px-3 py-1 font-mono text-xs font-bold uppercase border border-amber-500/60 bg-amber-500/10 hover:bg-amber-500 text-amber-600 dark:text-amber-400 hover:text-carbon-950 dark:hover:text-carbon-950 transition-colors">
+                    <span>НАСТРОЙКИ STEAM</span>
+                    <span>↗</span>
+                </a>
+                {% endif %}
             </div>
             <div class="border border-amber-500/40 bg-amber-500/5 p-6 sm:p-8 font-mono space-y-4">
                 <div class="flex items-start gap-3">
@@ -298,7 +307,16 @@
                         </p>
                     </div>
                 </div>
-                <div class="pt-2 flex justify-end">
+                <div class="pt-2 flex flex-wrap items-center justify-end gap-3">
+                    {% if steam_account.steam_id %}
+                    <a href="https://steamcommunity.com/profiles/{{ steam_account.steam_id }}/edit/settings"
+                       target="_blank"
+                       rel="noopener noreferrer"
+                       class="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-mono font-bold uppercase tracking-wider border border-paper-300 dark:border-carbon-700 bg-paper-100 dark:bg-carbon-900 hover:border-amber-500 text-zinc-700 dark:text-zinc-300 hover:text-amber-600 dark:hover:text-amber-400 transition-colors">
+                        <span>ОТКРЫТЬ НАСТРОЙКИ STEAM</span>
+                        <span>↗</span>
+                    </a>
+                    {% endif %}
                     <form method="post" action="{% url 'steam_sync' %}">
                         {% csrf_token %}
                         <input type="hidden" name="force" value="1">

@@ -45,6 +45,15 @@
                         <span class="px-2 py-0.5 bg-amber-500/15 border border-amber-500/40 text-amber-600 dark:text-amber-400 font-bold text-[11px] uppercase">
                             [ПРОФИЛЬ STEAM СКРЫТ]
                         </span>
+                        {% if steam_account.steam_id %}
+                        <a href="https://steamcommunity.com/profiles/{{ steam_account.steam_id }}/edit/settings"
+                           target="_blank"
+                           rel="noopener noreferrer"
+                           class="inline-flex items-center gap-1 px-2.5 py-1 border border-amber-500/50 bg-amber-500/10 hover:bg-amber-500 text-amber-600 dark:text-amber-400 hover:text-carbon-950 dark:hover:text-carbon-950 font-bold text-[10px] uppercase transition-colors">
+                            <span>Настройки Steam</span>
+                            <span>↗</span>
+                        </a>
+                        {% endif %}
                         <form method="post" action="{% url 'game_sync_achievements' game.pk %}" class="inline">
                             {% csrf_token %}
                             <button type="submit"
