@@ -104,3 +104,37 @@ class ReviewVote(models.Model):
 
     def __str__(self):
         return f'{self.user} → {self.rating_id}: {"полезно" if self.is_helpful else "бесполезно"}'
+
+
+class Achievement(models.Model):
+    game = models.ForeignKey(
+        Game,
+        on_delete=models.CASCADE,
+        related_name='achievements',
+        verbose_name='Игра',
+    )
+    api_name = models.CharField('Код Steam', max_length=120)
+    name = models.CharField('Название', max_length=200)
+    description = models.TextField('Описание', blank=True)
+    icon_url = models.URLField('Цветная иконка', max_length=500, blank=True)
+    icon_gray_url = models.URLField('Серая иконка', max_length=500, blank=True)
+    unlocked_by = models.ManyToManyField(
+        'accounts.Profile',
+        related_name='unlocked_achievements',
+        blank=True,
+        verbose_name='Выбившие игроки',
+    )
+
+    class Meta:
+        verbose_name = 'Достижение'
+        verbose_name_plural = 'Достижения'
+        ordering = ['pk']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['game', 'api_name'],
+                name='unique_game_achievement',
+            ),
+        ]
+
+    def __str__(self):
+        return f'{self.game.title} — {self.name}'

@@ -1,7 +1,15 @@
 from django.contrib import admin, messages
 
-from .models import Category, Game, Rating, ReviewVote
+from .models import Achievement, Category, Game, Rating, ReviewVote
+from .steam_service import SteamAPIError
 from .sync import sync_game
+
+
+class AchievementInline(admin.TabularInline):
+    model = Achievement
+    extra = 0
+    fields = ('name', 'api_name', 'description')
+    readonly_fields = ('api_name',)
 
 
 @admin.register(Category)
@@ -16,24 +24,33 @@ class GameAdmin(admin.ModelAdmin):
     list_display = ('__str__', 'steam_app_id', 'release_date')
     search_fields = ('title', 'steam_app_id')
     filter_horizontal = ('categories',)
+    inlines = [AchievementInline]
     actions = ['refresh_from_steam']
 
     def save_related(self, request, form, formsets, change):
         super().save_related(request, form, formsets, change)
         if not change:
-            if sync_game(form.instance):
-                self.message_user(request, 'Данные подтянуты из Steam.')
-            else:
-                self.message_user(
-                    request,
-                    'Не удалось получить данные из Steam. Заполните поля вручную.',
-                    level=messages.WARNING,
-                )
+            try:
+                sync_game(form.instance)
+                self.message_user(request, f'Данные и достижения игры «{form.instance.title}» успешно загружены из Steam.')
+            except SteamAPIError as e:
+                self.message_user(request, f'Ошибка загрузки данных из Steam: {e}', level=messages.ERROR)
 
-    @admin.action(description='Обновить из Steam (перезаписать поля)')
+    @admin.action(description='Обновить из Steam (перезаписать поля и достижения)')
     def refresh_from_steam(self, request, queryset):
-        updated = sum(sync_game(game, overwrite=True) for game in queryset)
-        self.message_user(request, f'Обновлено игр: {updated} из {queryset.count()}')
+        success_count = 0
+        errors = []
+        for game in queryset:
+            try:
+                sync_game(game, overwrite=True)
+                success_count += 1
+            except SteamAPIError as e:
+                errors.append(f'{game}: {e}')
+
+        if success_count:
+            self.message_user(request, f'Успешно обновлено игр: {success_count} из {queryset.count()}.')
+        if errors:
+            self.message_user(request, f'Ошибки при обновлении: {"; ".join(errors)}', level=messages.ERROR)
 
 @admin.register(Rating)
 class RatingAdmin(admin.ModelAdmin):
@@ -52,3 +69,11 @@ class ReviewVoteAdmin(admin.ModelAdmin):
     list_display = ('rating', 'user', 'is_helpful', 'created_at')
     list_filter = ('is_helpful',)
     raw_id_fields = ('rating', 'user')
+
+
+@admin.register(Achievement)
+class AchievementAdmin(admin.ModelAdmin):
+    list_display = ('name', 'game', 'api_name')
+    search_fields = ('name', 'api_name', 'game__title')
+    list_filter = ('game',)
+    raw_id_fields = ('game',)
