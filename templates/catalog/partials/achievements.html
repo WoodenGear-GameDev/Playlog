@@ -1,0 +1,53 @@
+{% if achievements and achievements.total > 0 %}
+<section id="achievements" class="border border-paper-300 dark:border-carbon-800 bg-paper-100 dark:bg-carbon-900">
+    <div class="px-6 py-4 border-b border-paper-300 dark:border-carbon-800 bg-paper-50 dark:bg-carbon-950/60 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-2.5">
+            <span class="font-mono text-xs px-1.5 py-0.5 bg-signal-500/15 border border-signal-500/40 text-signal-600 dark:text-signal-400 font-bold">
+                #03
+            </span>
+            <h2 class="text-sm sm:text-base font-bold font-mono uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
+                Достижения Steam
+            </h2>
+            <span class="font-mono text-xs text-zinc-500 dark:text-zinc-400">
+                [{{ achievements.total }}]
+            </span>
+        </div>
+
+        {% if achievements.has_player_stats %}
+        <div class="flex items-center gap-2 font-mono text-xs">
+            <span class="text-zinc-500 uppercase tracking-wider">ПРОГРЕСС:</span>
+            <span class="px-2 py-0.5 bg-signal-500/15 border border-signal-500/40 text-signal-600 dark:text-signal-400 font-bold">
+                {{ achievements.unlocked }} / {{ achievements.total }}
+            </span>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="p-6">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {% for item in achievements.items %}
+            <div class="flex items-start gap-3 p-3 border border-paper-300 dark:border-carbon-800 bg-paper-50 dark:bg-carbon-950/40 {% if item.achieved %}border-signal-500/40{% endif %}">
+                {% if item.achieved %}
+                    <img src="{{ item.icon }}" alt="" class="w-12 h-12 flex-shrink-0 border border-signal-500/50" loading="lazy">
+                {% else %}
+                    <img src="{{ item.icongray }}" alt="" class="w-12 h-12 flex-shrink-0 border border-paper-300 dark:border-carbon-800 opacity-60 grayscale" loading="lazy">
+                {% endif %}
+                <div class="min-w-0 flex-1">
+                    <div class="flex items-center justify-between gap-2">
+                        <h4 class="font-bold text-xs text-zinc-900 dark:text-zinc-100 truncate {% if item.achieved %}text-signal-600 dark:text-signal-400{% endif %}">
+                            {{ item.name }}
+                        </h4>
+                        {% if item.achieved %}
+                            <span class="font-mono text-[9px] px-1 py-0.2 bg-signal-500/20 text-signal-600 dark:text-signal-400 font-bold border border-signal-500/30">ВЫБИТО</span>
+                        {% endif %}
+                    </div>
+                    <p class="text-[11px] text-zinc-600 dark:text-zinc-400 line-clamp-2 mt-1 leading-snug">
+                        {{ item.description|default:"Скрытое достижение" }}
+                    </p>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}

@@ -300,13 +300,18 @@
 
     </div>
 
+    <!-- Достижения Steam (подгружаются асинхронно в фоне, не блокируя открытие страницы) -->
+    {% if game.steam_app_id %}
+    <div id="steam-achievements-container" data-url="{% url 'game_achievements' game.pk %}"></div>
+    {% endif %}
+
     <!-- Отзывы игроков -->
     <section id="reviews" class="border border-paper-300 dark:border-carbon-800 bg-paper-100 dark:bg-carbon-900">
 
         <!-- Шапка секции -->
         <div class="px-6 py-4 border-b border-paper-300 dark:border-carbon-800 bg-paper-50 dark:bg-carbon-950/60 flex flex-wrap items-center justify-between gap-3">
             <div class="flex items-center gap-2.5">
-                <span class="font-mono text-xs px-1.5 py-0.5 bg-signal-500/15 border border-signal-500/40 text-signal-600 dark:text-signal-400 font-bold">
+                <span id="reviews-module-num" class="font-mono text-xs px-1.5 py-0.5 bg-signal-500/15 border border-signal-500/40 text-signal-600 dark:text-signal-400 font-bold">
                     #03
                 </span>
                 <h2 class="text-sm sm:text-base font-bold font-mono uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
@@ -543,6 +548,22 @@ document.addEventListener('DOMContentLoaded', () => {
             if (errorText) errorText.classList.remove('hidden');
         }
     });
+    // 3. Асинхронная подгрузка достижений Steam без блокировки страницы
+    const achContainer = document.getElementById('steam-achievements-container');
+    if (achContainer && achContainer.dataset.url) {
+        fetch(achContainer.dataset.url)
+            .then((res) => (res.ok ? res.text() : ''))
+            .then((html) => {
+                if (html && html.trim()) {
+                    achContainer.innerHTML = html;
+                    const reviewsNum = document.getElementById('reviews-module-num');
+                    if (reviewsNum) {
+                        reviewsNum.textContent = '#04';
+                    }
+                }
+            })
+            .catch(() => {});
+    }
 });
 </script>
 {% endblock %}

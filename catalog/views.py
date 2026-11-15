@@ -49,7 +49,11 @@ def _search_games(query):
     return [pk for _, pk in found]
 
 
-from .steam_service import fetch_app_details, search_steam_games
+from .steam_service import (
+    fetch_app_details,
+    fetch_game_achievements,
+    search_steam_games,
+)
 from .sync import sync_game
 
 
@@ -61,34 +65,54 @@ def index(request):
         games = Game.objects.in_bulk(list(page.object_list))
         results = [games[pk] for pk in page.object_list if pk in games]
 
-        # Ищем игры в Steam
-        steam_items = search_steam_games(q)
-        existing_map = dict(
-            Game.objects.filter(
-                steam_app_id__in=[it['steam_app_id'] for it in steam_items]
-            ).values_list('steam_app_id', 'pk')
-        )
-        steam_results = []
-        for it in steam_items:
-            appid = it['steam_app_id']
-            existing_pk = existing_map.get(appid)
-            steam_results.append({
-                'steam_app_id': appid,
-                'title': it['title'],
-                'header_image': it['header_image'],
-                'in_catalog': bool(existing_pk),
-                'game_pk': existing_pk,
-            })
-
         return render(request, 'catalog/index.html', {
             'q': q,
             'page': page,
             'results': results,
-            'steam_results': steam_results,
         })
 
     categories = Category.objects.prefetch_related('games')
     uncategorized = Game.objects.filter(categories__isnull=True)
+    return render(request, 'catalog/index.html', {
+        'categories': categories,
+        'uncategorized': uncategorized,
+    })
+
+
+def steam_search_results(request):
+    """Асинхронно ищет игры в Steam по запросу и отдаёт карточки для вставки."""
+    q = request.GET.get('q', '').strip()[:100]
+    if not q:
+        return render(request, 'catalog/partials/steam_search_results.html', {'steam_results': []})
+
+    from django.core.cache import cache
+
+    cache_key = f'steam_search_{q.casefold()}'
+    steam_items = cache.get(cache_key)
+    if steam_items is None:
+        steam_items = search_steam_games(q)
+        cache.set(cache_key, steam_items, 3600)  # кэш поиска на 1 час
+
+    existing_map = dict(
+        Game.objects.filter(
+            steam_app_id__in=[it['steam_app_id'] for it in steam_items]
+        ).values_list('steam_app_id', 'pk')
+    )
+    steam_results = []
+    for it in steam_items:
+        appid = it['steam_app_id']
+        existing_pk = existing_map.get(appid)
+        steam_results.append({
+            'steam_app_id': appid,
+            'title': it['title'],
+            'header_image': it['header_image'],
+            'in_catalog': bool(existing_pk),
+            'game_pk': existing_pk,
+        })
+
+    return render(request, 'catalog/partials/steam_search_results.html', {
+        'steam_results': steam_results,
+    })
     return render(request, 'catalog/index.html', {
         'categories': categories,
         'uncategorized': uncategorized,
@@ -170,6 +194,20 @@ def game_detail(request, pk):
         'sort': sort,
         'sort_options': REVIEW_SORT_LABELS,
     })
+
+
+def game_achievements(request, pk):
+    """Асинхронно подгружает блок достижений Steam для страницы игры."""
+    game = get_object_or_404(Game, pk=pk)
+    if not game.steam_app_id:
+        return render(request, 'catalog/partials/achievements.html', {'achievements': None})
+
+    steam_id = None
+    if request.user.is_authenticated and hasattr(request.user, 'profile') and request.user.profile.steam_id:
+        steam_id = request.user.profile.steam_id
+
+    achievements = fetch_game_achievements(game.steam_app_id, steam_id=steam_id)
+    return render(request, 'catalog/partials/achievements.html', {'achievements': achievements})
 
 
 @login_required

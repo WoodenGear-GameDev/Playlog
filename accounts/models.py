@@ -56,6 +56,8 @@ class LibraryGame(models.Model):
     name = models.CharField('Название', max_length=200, blank=True)
     playtime_minutes = models.PositiveIntegerField('Время в игре (мин)', default=0)
     header_image = models.URLField('Обложка (URL)', max_length=500, blank=True)
+    achievements_unlocked = models.PositiveIntegerField('Выбито достижений', default=0)
+    achievements_total = models.PositiveIntegerField('Всего достижений', default=0)
 
     class Meta:
         verbose_name = 'Игра в библиотеке'
@@ -78,3 +80,9 @@ class LibraryGame(models.Model):
     @property
     def playtime_hours(self):
         return round(self.playtime_minutes / 60, 1)
+
+    @property
+    def achievements_progress_percent(self):
+        if not self.achievements_total:
+            return 0
+        return round((self.achievements_unlocked / self.achievements_total) * 100)

@@ -219,11 +219,24 @@
                             {{ entry.display_name }}
                         </h3>
 
-                        <div class="pt-2.5 border-t border-paper-300 dark:border-carbon-800 flex items-center justify-between font-mono text-xs">
-                            <span class="px-2 py-0.5 bg-signal-500/10 border border-signal-500/30 text-signal-600 dark:text-signal-400 font-bold">
-                                {{ entry.playtime_hours }} Ч
-                            </span>
-                            <span class="text-zinc-500 dark:text-zinc-400 group-hover:text-signal-600 dark:group-hover:text-signal-400 font-bold transition-colors">
+                        <div class="pt-2.5 border-t border-paper-300 dark:border-carbon-800 flex items-center justify-between font-mono text-xs gap-2">
+                            <div class="flex items-center gap-1.5 flex-wrap">
+                                <span class="px-2 py-0.5 bg-signal-500/10 border border-signal-500/30 text-signal-600 dark:text-signal-400 font-bold">
+                                    {{ entry.playtime_hours }} Ч
+                                </span>
+                                {% if entry.achievements_total > 0 %}
+                                    {% if entry.achievements_unlocked == entry.achievements_total %}
+                                        <span class="px-1.5 py-0.5 bg-amber-500/15 border border-amber-500/40 text-amber-600 dark:text-amber-400 font-bold text-[10px]" title="Все достижения получены!">
+                                            ★ 100%
+                                        </span>
+                                    {% else %}
+                                        <span class="px-1.5 py-0.5 bg-paper-200 dark:bg-carbon-800 border border-paper-300 dark:border-carbon-700 text-zinc-600 dark:text-zinc-400 text-[10px]" title="Достижения: {{ entry.achievements_unlocked }} из {{ entry.achievements_total }} ({{ entry.achievements_progress_percent }}%)">
+                                            🏆 {{ entry.achievements_unlocked }}/{{ entry.achievements_total }}
+                                        </span>
+                                    {% endif %}
+                                {% endif %}
+                            </div>
+                            <span class="text-zinc-500 dark:text-zinc-400 group-hover:text-signal-600 dark:group-hover:text-signal-400 font-bold transition-colors whitespace-nowrap">
                                 ОТКРЫТЬ →
                             </span>
                         </div>

@@ -3,7 +3,11 @@ import requests
 from django.conf import settings
 
 from catalog.models import Game
-from catalog.steam_service import fetch_app_details
+from catalog.steam_service import (
+    fetch_app_details,
+    fetch_player_achievement_counts,
+    steam_get,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +34,11 @@ def fetch_user_library(steam_id: str):
     }
 
     try:
-        response = requests.get(STEAM_OWNED_GAMES_URL, params=params, timeout=10)
+        response = steam_get(
+            STEAM_OWNED_GAMES_URL,
+            params=params,
+            timeout=10,
+        )
         response.raise_for_status()
         data = response.json()
     except Exception as e:
@@ -84,6 +92,7 @@ def sync_profile_library(profile):
 
     to_create = []
     to_update = []
+    stats_private = False
 
     for item in games:
         app_id = item['steam_app_id']
@@ -91,6 +100,15 @@ def sync_profile_library(profile):
         playtime = item['playtime_minutes']
 
         header_image = catalog_headers.get(app_id, '')
+
+        # Запрашиваем актуальные данные о достижениях (если статистика пользователя не скрыта)
+        ach_unlocked, ach_total = 0, 0
+        if not stats_private:
+            ach_unlocked, ach_total, is_private = fetch_player_achievement_counts(
+                profile.steam_id, app_id
+            )
+            if is_private:
+                stats_private = True
 
         if app_id in existing_games:
             game = existing_games[app_id]
@@ -112,6 +130,14 @@ def sync_profile_library(profile):
                     game.header_image = header_image
                     changed = True
 
+            if ach_total > 0:
+                if game.achievements_total != ach_total:
+                    game.achievements_total = ach_total
+                    changed = True
+                if game.achievements_unlocked != ach_unlocked:
+                    game.achievements_unlocked = ach_unlocked
+                    changed = True
+
             if changed:
                 to_update.append(game)
         else:
@@ -128,13 +154,18 @@ def sync_profile_library(profile):
                     name=name,
                     playtime_minutes=playtime,
                     header_image=header_image,
+                    achievements_total=ach_total,
+                    achievements_unlocked=ach_unlocked,
                 )
             )
 
     if to_create:
         LibraryGame.objects.bulk_create(to_create, ignore_conflicts=True)
     if to_update:
-        LibraryGame.objects.bulk_update(to_update, ['name', 'playtime_minutes', 'header_image'])
+        LibraryGame.objects.bulk_update(
+            to_update,
+            ['name', 'playtime_minutes', 'header_image', 'achievements_total', 'achievements_unlocked'],
+        )
 
     # Удаляем игры, которых больше нет в библиотеке Steam
     profile.library.exclude(steam_app_id__in=seen_app_ids).delete()
