@@ -19,7 +19,7 @@
     <div class="p-3 border border-signal-500/40 bg-signal-500/10 font-mono text-xs text-zinc-700 dark:text-zinc-300 flex flex-wrap items-center justify-between gap-2">
         <span>
             Так ваш профиль видят другие пользователи.
-            {% if owner_profile.steam_id and not owner_profile.show_steam %}
+            {% if steam_account.steam_id and not steam_account.show_steam %}
             Steam и библиотека сейчас скрыты: включить их можно в личном кабинете.
             {% endif %}
         </span>
@@ -78,7 +78,7 @@
             <span class="font-bold uppercase tracking-wider text-zinc-900 dark:text-zinc-100">Steam</span>
             <span class="text-signal-600 dark:text-signal-400 text-[11px]">[ПОДТВЕРЖДЁН]</span>
         </div>
-        <a href="https://steamcommunity.com/profiles/{{ owner_profile.steam_id }}"
+        <a href="https://steamcommunity.com/profiles/{{ steam_account.steam_id }}"
            target="_blank" rel="noopener noreferrer"
            class="font-bold text-signal-600 dark:text-signal-400 hover:underline">
             Профиль в Steam ↗
@@ -180,14 +180,20 @@
             {% for entry in library_entries %}
             <div class="group flex flex-col border border-paper-300 dark:border-carbon-800 bg-paper-100 dark:bg-carbon-900 hover:border-signal-500 dark:hover:border-signal-500 transition-colors">
                 <div class="relative w-full aspect-[16/9] border-b border-paper-300 dark:border-carbon-800 bg-paper-200 dark:bg-carbon-950 overflow-hidden">
-                    <img src="https://cdn.akamai.steamstatic.com/steam/apps/{{ entry.steam_app_id }}/header.jpg"
-                         alt="{{ entry.display_name }}"
-                         loading="lazy"
-                         onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
-                         class="w-full h-full object-cover">
-                    <div class="hidden w-full h-full no-cover-grid items-center justify-center text-zinc-400 dark:text-zinc-600 font-mono text-xs">
-                        НЕТ ОБЛОЖКИ
-                    </div>
+                    {% if entry.display_cover %}
+                        <img src="{{ entry.display_cover }}"
+                             alt="{{ entry.display_name }}"
+                             loading="lazy"
+                             onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+                             class="w-full h-full object-cover">
+                        <div class="hidden w-full h-full no-cover-grid items-center justify-center text-zinc-400 dark:text-zinc-600 font-mono text-xs">
+                            {{ entry.display_name|slice:":15" }}
+                        </div>
+                    {% else %}
+                        <div class="w-full h-full no-cover-grid flex items-center justify-center text-zinc-400 dark:text-zinc-600 font-mono text-xs">
+                            {{ entry.display_name|slice:":15" }}
+                        </div>
+                    {% endif %}
                 </div>
                 <div class="p-3.5 flex flex-col flex-grow justify-between gap-3">
                     <h3 class="font-bold text-sm text-zinc-900 dark:text-zinc-100 line-clamp-1" title="{{ entry.display_name }}">
@@ -197,9 +203,37 @@
                         {{ entry.display_name }}
                         {% endif %}
                     </h3>
-                    <div class="pt-2.5 border-t border-paper-300 dark:border-carbon-800 flex items-center justify-between font-mono text-xs">
-                        <span class="px-2 py-0.5 bg-signal-500/10 border border-signal-500/30 text-signal-600 dark:text-signal-400 font-bold">{{ entry.playtime_hours }} Ч</span>
-                        {% if entry.catalog_game %}<span class="text-zinc-500 dark:text-zinc-400">В КАТАЛОГЕ</span>{% endif %}
+
+                    <!-- Часы и Достижения -->
+                    <div class="space-y-2 pt-2 border-t border-paper-300 dark:border-carbon-800 font-mono text-xs">
+                        <div class="flex items-center justify-between">
+                            <span class="px-2 py-0.5 bg-signal-500/10 border border-signal-500/30 text-signal-600 dark:text-signal-400 font-bold">{{ entry.playtime_hours }} Ч</span>
+                            {% if entry.catalog_game %}<span class="text-zinc-500 dark:text-zinc-400 text-[10px]">В КАТАЛОГЕ</span>{% endif %}
+                        </div>
+
+                        {% if entry.achievement_status == 'private' %}
+                        <div class="pt-1 text-[11px] font-mono text-amber-600 dark:text-amber-400">
+                            🔒 Достижения скрыты пользователем
+                        </div>
+                        {% elif entry.achievements_total > 0 %}
+                        <div class="space-y-1 pt-1">
+                            <div class="flex items-center justify-between text-[11px]">
+                                <span class="text-zinc-500">🏆 Достижения:</span>
+                                <span class="font-bold {% if entry.achievements_unlocked == entry.achievements_total %}text-amber-500 dark:text-amber-400{% else %}text-zinc-800 dark:text-zinc-200{% endif %}">
+                                    {{ entry.achievements_unlocked }}/{{ entry.achievements_total }} ({{ entry.achievements_progress_percent }}%)
+                                </span>
+                            </div>
+                            <div class="w-full bg-paper-300 dark:bg-carbon-950 h-1.5 overflow-hidden">
+                                <div class="{% if entry.achievements_unlocked == entry.achievements_total %}bg-amber-500{% else %}bg-signal-500{% endif %} h-full transition-all duration-300"
+                                     style="width: {{ entry.achievements_progress_percent }}%;"></div>
+                            </div>
+                            <button type="button"
+                                    onclick="openAchievementsModal('{% url 'user_game_achievements' owner.pk entry.steam_app_id %}', '{{ entry.display_name|escapejs }}')"
+                                    class="w-full mt-1.5 py-1 px-2 text-[10px] font-bold uppercase tracking-wider text-center border border-paper-300 dark:border-carbon-700 hover:border-signal-500 bg-paper-50 dark:bg-carbon-950 text-zinc-700 dark:text-zinc-300 hover:text-signal-600 dark:hover:text-signal-400 transition-colors">
+                                ПОСМОТРЕТЬ ДОСТИЖЕНИЯ →
+                            </button>
+                        </div>
+                        {% endif %}
                     </div>
                 </div>
             </div>

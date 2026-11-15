@@ -306,7 +306,7 @@ def invite_list(request, game_pk):
         form = InviteForm(request.POST)
         if form.is_valid():
             data = form.cleaned_data
-            has_steam = bool(getattr(getattr(request.user, 'profile', None), 'steam_id', ''))
+            has_steam = bool(getattr(getattr(request.user, 'steam_account', None), 'steam_id', ''))
             active_count = GameInvite.objects.active().filter(author=request.user).count()
             if active_count >= MAX_ACTIVE_INVITES:
                 form.add_error(

@@ -1,0 +1,95 @@
+{% if error %}
+<div class="mt-10 pt-6 border-t border-paper-300 dark:border-carbon-800 space-y-4">
+    <div class="flex items-center justify-between pb-2 border-b border-paper-300/60 dark:border-carbon-800/70">
+        <div class="flex items-center gap-2.5">
+            <span class="font-mono text-xs px-1.5 py-0.5 bg-red-500/15 border border-red-500/40 text-red-600 dark:text-red-400 font-bold">
+                STEAM
+            </span>
+            <h2 class="text-sm sm:text-base font-bold font-mono uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
+                Поиск в Steam
+            </h2>
+        </div>
+    </div>
+    <div class="border border-red-500/40 bg-red-500/5 p-6 font-mono text-xs space-y-3">
+        <div class="flex items-start gap-2.5 text-red-600 dark:text-red-400 font-bold">
+            <span>✕</span>
+            <span>Не удалось связаться с магазином Steam (ошибка сети или таймаут)</span>
+        </div>
+        {% if error %}
+        <p class="text-zinc-600 dark:text-zinc-400 pl-5 text-[11px]">{{ error }}</p>
+        {% endif %}
+        <div class="pl-5 pt-1">
+            <button type="button" onclick="fetchSteamResults()"
+                    class="px-3 py-1.5 font-bold uppercase border border-red-500 bg-red-500/10 hover:bg-red-500 text-red-600 dark:text-red-400 hover:text-white transition-colors">
+                Повторить поиск ⟳
+            </button>
+        </div>
+    </div>
+</div>
+{% elif steam_results %}
+<div class="mt-10 pt-6 border-t border-paper-300 dark:border-carbon-800 space-y-4">
+    <div class="flex items-center justify-between pb-2 border-b border-paper-300/60 dark:border-carbon-800/70">
+        <div class="flex items-center gap-2.5">
+            <span class="font-mono text-xs px-1.5 py-0.5 bg-signal-500/15 border border-signal-500/40 text-signal-600 dark:text-signal-400 font-bold">
+                STEAM
+            </span>
+            <h2 class="text-sm sm:text-base font-bold font-mono uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
+                Найдено в Steam
+            </h2>
+            <span class="font-mono text-xs text-zinc-500 dark:text-zinc-400">
+                [{{ steam_results|length }}]
+            </span>
+        </div>
+        <p class="hidden sm:block font-mono text-[11px] text-zinc-500 dark:text-zinc-400">
+            Добавьте игру в каталог в один клик, чтобы начать обсуждение
+        </p>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        {% for item in steam_results %}
+        <div class="group flex flex-col border border-paper-300 dark:border-carbon-800 bg-paper-100 dark:bg-carbon-900 hover:border-signal-500 dark:hover:border-signal-500 transition-colors">
+            <div class="relative w-full aspect-[231/87] border-b border-paper-300 dark:border-carbon-800 bg-paper-200 dark:bg-carbon-950 overflow-hidden">
+                {% if item.header_image %}
+                    <img src="{{ item.header_image }}" alt="{{ item.title }}" loading="lazy" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+                {% else %}
+                    <div class="w-full h-full flex items-center justify-center font-mono text-xs text-zinc-400">НЕТ ОБЛОЖКИ</div>
+                {% endif %}
+            </div>
+            <div class="p-3.5 flex flex-col flex-grow justify-between gap-3 font-mono">
+                <h3 class="font-bold text-sm text-zinc-900 dark:text-zinc-100 line-clamp-1 group-hover:text-signal-600 dark:group-hover:text-signal-400 transition-colors" title="{{ item.title }}">
+                    {{ item.title }}
+                </h3>
+                <div class="pt-2 border-t border-paper-300 dark:border-carbon-800 flex items-center justify-between text-xs">
+                    <span class="text-zinc-500 text-[10px]">AppID: {{ item.steam_app_id }}</span>
+                    {% if item.in_catalog %}
+                        <a href="{% url 'game_detail' item.game_pk %}" class="px-2 py-1 font-bold text-signal-600 dark:text-signal-400 hover:underline">
+                            В КАТАЛОГЕ →
+                        </a>
+                    {% else %}
+                        <a href="{% url 'steam_game_import' item.steam_app_id %}?title={{ item.title|urlencode }}&amp;img={{ item.header_image|urlencode }}" class="px-2 py-1 font-bold bg-signal-500 hover:bg-signal-400 text-carbon-950 transition-colors">
+                            + ДОБАВИТЬ
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% elif q %}
+<div class="mt-10 pt-6 border-t border-paper-300 dark:border-carbon-800 space-y-4">
+    <div class="flex items-center justify-between pb-2 border-b border-paper-300/60 dark:border-carbon-800/70">
+        <div class="flex items-center gap-2.5">
+            <span class="font-mono text-xs px-1.5 py-0.5 bg-paper-200 dark:bg-carbon-800 text-zinc-500 font-bold">
+                STEAM
+            </span>
+            <h2 class="text-sm sm:text-base font-bold font-mono uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
+                Поиск в магазине Steam
+            </h2>
+        </div>
+    </div>
+    <div class="border border-paper-300 dark:border-carbon-800 bg-paper-100 dark:bg-carbon-900 p-8 text-center font-mono text-xs sm:text-sm text-zinc-600 dark:text-zinc-400">
+        В магазине Steam по запросу «{{ q }}» ничего не найдено.
+    </div>
+</div>
+{% endif %}

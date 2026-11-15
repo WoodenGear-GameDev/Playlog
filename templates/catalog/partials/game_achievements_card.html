@@ -1,0 +1,211 @@
+<section id="achievements" class="border border-paper-300 dark:border-carbon-800 bg-paper-100 dark:bg-carbon-900">
+    {% if game.schema_status == 'ready' %}
+        <div class="px-6 py-4 border-b border-paper-300 dark:border-carbon-800 bg-paper-50 dark:bg-carbon-950/60 flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center gap-2.5">
+                <span class="font-mono text-xs px-1.5 py-0.5 bg-signal-500/15 border border-signal-500/40 text-signal-600 dark:text-signal-400 font-bold">
+                    #01
+                </span>
+                <h2 class="text-sm sm:text-base font-bold font-mono uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
+                    Достижения Steam
+                </h2>
+                <span class="font-mono text-xs text-zinc-500 dark:text-zinc-400">
+                    [{{ achievements|length }}]
+                </span>
+            </div>
+
+            <!-- Правая часть шапки: статус пользователя -->
+            <div class="flex items-center gap-2 font-mono text-xs">
+                {% if user_status == 'ANONYMOUS' %}
+                    <a href="{% url 'login' %}" class="text-signal-600 dark:text-signal-400 hover:underline">
+                        Войдите, чтобы отслеживать прогресс →
+                    </a>
+                {% elif user_status == 'NO_STEAM' %}
+                    <a href="{% url 'profile' %}#steam" class="text-signal-600 dark:text-signal-400 hover:underline">
+                        Привяжите Steam в профиле, чтобы отслеживать прогресс →
+                    </a>
+                {% elif user_status == 'NOT_IN_LIBRARY' %}
+                    <span class="px-2 py-0.5 bg-paper-200 dark:bg-carbon-800 border border-paper-300 dark:border-carbon-700 text-zinc-500 font-bold text-[11px] uppercase">
+                        [НЕ В ВАШЕЙ БИБЛИОТЕКЕ STEAM]
+                    </span>
+                {% elif user_status == 'not_synced' %}
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <span class="px-2 py-0.5 bg-amber-500/15 border border-amber-500/40 text-amber-600 dark:text-amber-400 font-bold text-[11px] uppercase">
+                            [ПРОГРЕСС НЕ СИНХРОНИЗИРОВАН]
+                        </span>
+                        <form method="post" action="{% url 'game_sync_achievements' game.pk %}" class="inline">
+                            {% csrf_token %}
+                            <button type="submit"
+                                    class="px-2.5 py-1 bg-signal-500 hover:bg-signal-400 text-carbon-950 font-bold text-[10px] uppercase tracking-wider transition-colors">
+                                Загрузить мой прогресс
+                            </button>
+                        </form>
+                    </div>
+                {% elif user_status == 'private' %}
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <span class="px-2 py-0.5 bg-amber-500/15 border border-amber-500/40 text-amber-600 dark:text-amber-400 font-bold text-[11px] uppercase">
+                            [ПРОФИЛЬ STEAM СКРЫТ]
+                        </span>
+                        {% if steam_account.steam_id %}
+                        <a href="https://steamcommunity.com/profiles/{{ steam_account.steam_id }}/edit/settings"
+                           target="_blank"
+                           rel="noopener noreferrer"
+                           class="inline-flex items-center gap-1 px-2.5 py-1 border border-amber-500/50 bg-amber-500/10 hover:bg-amber-500 text-amber-600 dark:text-amber-400 hover:text-carbon-950 dark:hover:text-carbon-950 font-bold text-[10px] uppercase transition-colors">
+                            <span>Настройки Steam</span>
+                            <span>↗</span>
+                        </a>
+                        {% endif %}
+                        <form method="post" action="{% url 'game_sync_achievements' game.pk %}" class="inline">
+                            {% csrf_token %}
+                            <button type="submit"
+                                    class="px-2.5 py-1 border border-paper-300 dark:border-carbon-800 hover:border-signal-500 text-zinc-700 dark:text-zinc-300 hover:text-signal-600 dark:hover:text-signal-400 font-bold text-[10px] uppercase transition-colors">
+                                Проверить снова ⟳
+                            </button>
+                        </form>
+                    </div>
+                {% elif user_status == 'synced' %}
+                    <div class="flex items-center gap-2.5 flex-wrap">
+                        <span class="text-zinc-500 uppercase tracking-wider text-[11px]">ПРОГРЕСС:</span>
+                        <span class="px-2 py-0.5 bg-signal-500/15 border border-signal-500/40 text-signal-600 dark:text-signal-400 font-bold text-xs">
+                            {{ user_unlocked_count }} / {{ achievements|length }} ({{ user_percent }}%)
+                        </span>
+                        <div class="w-20 sm:w-28 bg-paper-200 dark:bg-carbon-950 h-2 border border-paper-300 dark:border-carbon-800 hidden sm:block overflow-hidden">
+                            <div class="bg-signal-500 h-full transition-all duration-300" style="width: {{ user_percent }}%;"></div>
+                        </div>
+                        <form method="post" action="{% url 'game_sync_achievements' game.pk %}" class="inline">
+                            {% csrf_token %}
+                            <button type="submit"
+                                    title="Синхронизировать достижения этой игры со Steam"
+                                    class="px-2 py-0.5 border border-paper-300 dark:border-carbon-800 hover:border-signal-500 text-zinc-600 dark:text-zinc-400 hover:text-signal-600 dark:hover:text-signal-400 text-[10px] uppercase font-bold transition-colors">
+                                ОБНОВИТЬ ⟳
+                            </button>
+                        </form>
+                    </div>
+                {% elif user_status == 'error' %}
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <span class="px-2 py-0.5 bg-red-500/15 border border-red-500/40 text-red-600 dark:text-red-400 font-bold text-[11px] uppercase">
+                            [ОШИБКА СИНХРОНИЗАЦИИ]
+                        </span>
+                        <form method="post" action="{% url 'game_sync_achievements' game.pk %}" class="inline">
+                            {% csrf_token %}
+                            <button type="submit"
+                                    class="px-2 py-0.5 border border-red-500 bg-red-500/10 hover:bg-red-500 text-red-600 dark:text-red-400 hover:text-white font-bold text-[10px] uppercase transition-colors">
+                                Повторить ⟳
+                            </button>
+                        </form>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="p-6 space-y-4">
+            {% if user_status == 'NOT_IN_LIBRARY' %}
+            <div class="p-3 border border-paper-300 dark:border-carbon-800 bg-paper-50 dark:bg-carbon-950/60 font-mono text-xs text-zinc-600 dark:text-zinc-400 flex items-center gap-2">
+                <span class="text-zinc-400">ℹ</span>
+                <span>У вас нет этой игры в Steam. Ачивки будут отслеживаться, если игра появится в вашей библиотеке.</span>
+            </div>
+            {% endif %}
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {% for item in achievements|slice:":3" %}
+                <div class="flex items-start gap-3 p-3 border border-paper-300 dark:border-carbon-800 bg-paper-50 dark:bg-carbon-950/40 {% if item.is_unlocked %}border-signal-500/50 bg-signal-500/5{% elif user_status == 'synced' %}opacity-60 grayscale{% endif %}">
+                    <div class="relative w-12 h-12 flex-shrink-0 border {% if item.is_unlocked %}border-signal-500/60{% else %}border-paper-300 dark:border-carbon-800{% endif %} bg-paper-200 dark:bg-carbon-950 overflow-hidden flex items-center justify-center">
+                        {% if item.is_unlocked or user_status != 'synced' %}
+                            <img src="{{ item.icon_url|default:item.icon_gray_url }}"
+                                 alt=""
+                                 loading="lazy"
+                                 onerror="handleAchIconError(this, '{{ item.icon_gray_url|escapejs }}')"
+                                 class="w-full h-full object-cover">
+                        {% else %}
+                            <img src="{{ item.icon_gray_url|default:item.icon_url }}"
+                                 alt=""
+                                 loading="lazy"
+                                 onerror="handleAchIconError(this, '{{ item.icon_url|escapejs }}')"
+                                 class="w-full h-full object-cover grayscale opacity-50">
+                        {% endif %}
+                        <div class="hidden w-full h-full no-cover-grid items-center justify-center font-mono text-sm {% if item.is_unlocked %}text-signal-500{% else %}text-zinc-400 dark:text-zinc-600{% endif %}">
+                            {% if item.is_ultra_rare %}★{% elif item.is_rare %}◆{% else %}🏆{% endif %}
+                        </div>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <div class="flex items-center justify-between gap-2">
+                            <h4 class="font-bold text-xs text-zinc-900 dark:text-zinc-100 truncate {% if item.is_unlocked %}text-signal-600 dark:text-signal-400{% endif %}">
+                                {{ item.name }}
+                            </h4>
+                            {% if item.is_unlocked %}
+                                <span class="font-mono text-[9px] px-1 py-0.2 bg-signal-500/20 text-signal-600 dark:text-signal-400 font-bold border border-signal-500/30 whitespace-nowrap">
+                                    ВЫБИТО ✓
+                                </span>
+                            {% endif %}
+                        </div>
+                        <p class="text-[11px] text-zinc-600 dark:text-zinc-400 line-clamp-2 mt-1 leading-snug">
+                            {{ item.description|default:"Скрытое достижение" }}
+                        </p>
+                        <div class="flex items-center justify-between gap-1 mt-2 font-mono text-[10px]">
+                            <div>
+                                {% if item.is_ultra_rare %}
+                                    <span class="px-1.5 py-0.5 bg-amber-500/20 text-amber-600 dark:text-amber-400 font-bold border border-amber-500/40">★ {{ item.global_percent }}% (УЛЬТРАРЕДКОЕ)</span>
+                                {% elif item.is_rare %}
+                                    <span class="px-1.5 py-0.5 bg-purple-500/20 text-purple-600 dark:text-purple-400 font-bold border border-purple-500/40">★ {{ item.global_percent }}% (РЕДКОЕ)</span>
+                                {% elif item.global_percent %}
+                                    <span class="text-zinc-500 dark:text-zinc-400">У {{ item.global_percent }}% игроков</span>
+                                {% endif %}
+                            </div>
+                            {% if item.unlocked_at %}
+                                <span class="text-[9px] text-zinc-400 dark:text-zinc-500 whitespace-nowrap">{{ item.unlocked_at|date:"d.m.Y" }}</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            {% if achievements|length > 3 %}
+            <div class="mt-4 pt-4 border-t border-paper-300 dark:border-carbon-800 flex justify-end">
+                <button type="button"
+                        onclick="openAchievementsModal('{% url 'game_achievements_modal' game.pk %}', '{{ game.title|escapejs }}')"
+                        class="px-5 py-2 font-mono text-xs font-bold uppercase tracking-wider border border-paper-300 dark:border-carbon-800 hover:border-signal-500 bg-paper-50 dark:bg-carbon-950 text-zinc-700 dark:text-zinc-300 hover:text-signal-600 dark:hover:text-signal-400 transition-colors inline-flex items-center gap-2">
+                    <span>ПОСМОТРЕТЬ ВСЕ ({{ achievements|length }})</span>
+                    <span>→</span>
+                </button>
+            </div>
+            {% endif %}
+        </div>
+
+    {% elif game.schema_status == 'no_achievements' %}
+        <div class="px-6 py-4 border-b border-paper-300 dark:border-carbon-800 bg-paper-50 dark:bg-carbon-950/60 flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+                <span class="font-mono text-xs px-1.5 py-0.5 bg-paper-200 dark:bg-carbon-800 text-zinc-500 font-bold">
+                    #01
+                </span>
+                <h2 class="text-sm sm:text-base font-bold font-mono uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
+                    Достижения Steam
+                </h2>
+            </div>
+        </div>
+        <div class="p-6 font-mono text-xs text-zinc-500 dark:text-zinc-400 text-center">
+            В этой игре нет достижений в Steam.
+        </div>
+
+    {% elif game.schema_status == 'error' %}
+        <div class="px-6 py-4 border-b border-paper-300 dark:border-carbon-800 bg-paper-50 dark:bg-carbon-950/60 flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+                <span class="font-mono text-xs px-1.5 py-0.5 bg-red-500/15 border border-red-500/40 text-red-600 dark:text-red-400 font-bold">
+                    [ОШИБКА СХЕМЫ]
+                </span>
+                <h2 class="text-sm sm:text-base font-bold font-mono uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
+                    Достижения Steam
+                </h2>
+            </div>
+        </div>
+        <div class="p-6 font-mono text-xs space-y-3">
+            <p class="text-red-600 dark:text-red-400">
+                Не удалось загрузить схему достижений: {{ game.schema_error|default:"Ошибка сети или Steam API." }}
+            </p>
+            <button type="button"
+                    onclick="loadAchievementsCard(true)"
+                    class="px-4 py-2 border border-red-500 bg-red-500/10 hover:bg-red-500 text-red-600 dark:text-red-400 hover:text-white font-bold uppercase transition-colors">
+                Повторить попытку ⟳
+            </button>
+        </div>
+    {% endif %}
+</section>

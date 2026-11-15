@@ -58,9 +58,9 @@
             </div>
             {% endif %}
 
-            {% if invite.author.profile.steam_id %}
+            {% if invite.author.steam_account.steam_id %}
             <div class="font-mono text-xs">
-                <a href="https://steamcommunity.com/profiles/{{ invite.author.profile.steam_id }}"
+                <a href="https://steamcommunity.com/profiles/{{ invite.author.steam_account.steam_id }}"
                    target="_blank" rel="noopener noreferrer"
                    class="font-bold text-signal-600 dark:text-signal-400 hover:underline">
                     Профиль автора в Steam ↗
