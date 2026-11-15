@@ -29,6 +29,7 @@ from catalog.models import Game
 from .models import LibraryGame, Profile
 from .deletion import DeletionError, check_can_delete, content_summary, delete_user_account
 from .self_delete import read_token, send_delete_email
+from .library_sync import LibrarySyncError, cooldown_left, describe_stats, sync_library
 
 DELETE_EMAIL_COOLDOWN = 60
 
@@ -86,7 +87,11 @@ def resend_confirmation(request):
 def profile(request):
     profile, _ = Profile.objects.get_or_create(user=request.user)
     page = Paginator(profile.library.all(), 48).get_page(request.GET.get('page'))
-    return render(request, 'accounts/profile.html', {'profile': profile, 'page': page})
+    return render(request, 'accounts/profile.html', {
+        'profile': profile,
+        'page': page,
+        'library_cooldown': cooldown_left(profile),
+    })
 
 def activate(request, uidb64, token):
     User = get_user_model()
@@ -286,3 +291,15 @@ def account_delete_confirm(request, token):
         'mode': mode,
         'summary': content_summary(user),
     })
+
+@login_required
+@require_POST
+def library_refresh(request):
+    profile, _ = Profile.objects.get_or_create(user=request.user)
+    try:
+        stats = sync_library(profile)
+    except LibrarySyncError as exc:
+        messages.error(request, str(exc))
+    else:
+        messages.success(request, describe_stats(stats))
+    return redirect(f"{reverse('profile')}#library")
