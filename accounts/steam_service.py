@@ -59,6 +59,22 @@ def fetch_games_achievement_counts(steam_id: str, app_ids: list[int]) -> dict[in
     return results
 
 
+def resolve_store_capsule(app_id: int) -> str:
+    """Возвращает обложку из поиска Steam (capsule_231x87), идентичную результатам поиска."""
+    try:
+        url = 'https://store.steampowered.com/api/storesearch/'
+        params = {'term': str(app_id), 'l': 'russian', 'cc': 'ru'}
+        resp = steam_get(url, params=params, timeout=4)
+        if resp.status_code == 200:
+            items = resp.json().get('items', [])
+            for it in items:
+                if it.get('id') == app_id and it.get('tiny_image'):
+                    return it['tiny_image']
+    except Exception:
+        pass
+    return f'https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/{app_id}/capsule_231x87.jpg'
+
+
 def fetch_user_library(steam_id: str) -> list[dict]:
     """Запрашивает список купленных/сыгранных игр пользователя из Steam Web API.
 
@@ -99,10 +115,12 @@ def fetch_user_library(steam_id: str) -> list[dict]:
         if not appid:
             continue
         capsule = (item.get('capsule_filename') or '').strip().lstrip('/')
-        if capsule:
-            cover_url = f'https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/{appid}/{capsule}'
+        if '/' in capsule:
+            # Для игр с динамическим контент-хешем (как PEAK) запрашиваем точный URL из поиска
+            cover_url = resolve_store_capsule(appid)
         else:
-            cover_url = f'https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/{appid}/header.jpg'
+            cover_url = f'https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/{appid}/capsule_231x87.jpg'
+
         results.append({
             'steam_app_id': appid,
             'name': item.get('name', ''),
@@ -173,7 +191,7 @@ def sync_steam_account_library(library: SteamLibrary, force: bool = False):
         name = item['name']
         playtime = item['playtime_minutes']
         cat_game = catalog_map.get(app_id)
-        cover_url = item.get('cover_url') or f'https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/{app_id}/header.jpg'
+        cover_url = item.get('cover_url') or f'https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/{app_id}/capsule_231x87.jpg'
         header_img = cat_game.header_image if (cat_game and cat_game.header_image) else cover_url
 
         ach_unlocked, ach_total = ach_counts.get(app_id, (0, 0))

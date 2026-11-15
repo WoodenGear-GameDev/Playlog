@@ -144,7 +144,7 @@ class LibraryGame(models.Model):
             return cat_game.header_image
         if self.header_image:
             return self.header_image
-        return f'https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/{self.steam_app_id}/header.jpg'
+        return f'https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/{self.steam_app_id}/capsule_231x87.jpg'
 
     @property
     def playtime_hours(self):
