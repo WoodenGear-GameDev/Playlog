@@ -30,4 +30,5 @@ urlpatterns = [
     path('delete/', views.account_delete, name='account_delete'),
     path('delete/confirm/<str:token>/', views.account_delete_confirm, name='account_delete_confirm'),
     path('library/refresh/', views.library_refresh, name='library_refresh'),
+    path('profile/privacy/', views.profile_privacy, name='profile_privacy'),
 ]

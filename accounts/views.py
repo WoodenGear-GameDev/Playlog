@@ -303,3 +303,15 @@ def library_refresh(request):
     else:
         messages.success(request, describe_stats(stats))
     return redirect(f"{reverse('profile')}#library")
+
+@login_required
+@require_POST
+def profile_privacy(request):
+    profile, _ = Profile.objects.get_or_create(user=request.user)
+    profile.show_steam = request.POST.get('show_steam') == '1'
+    profile.save(update_fields=['show_steam'])
+    if profile.show_steam:
+        messages.success(request, 'Steam-профиль и библиотека теперь видны другим пользователям.')
+    else:
+        messages.success(request, 'Steam-профиль и библиотека скрыты от других пользователей.')
+    return redirect('profile')
