@@ -6,9 +6,6 @@ from django.core.cache import cache
 
 logger = logging.getLogger(__name__)
 
-SCHEMA_CACHE_TTL = 86400  # 24 часа для неизменяемой схемы ачивок
-PLAYER_ACH_CACHE_TTL = 600  # 10 минут для статуса выбитых ачивок игрока
-
 STEAM_HEADERS = {
     'User-Agent': (
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
@@ -20,6 +17,31 @@ STEAM_HEADERS = {
 _steam_session = None
 
 
+class SteamAPIError(Exception):
+    """Базовая ошибка при работе со Steam API."""
+    pass
+
+
+class SteamConnectionError(SteamAPIError):
+    """Ошибка сети, таймаута или сброса SSL-соединения серверами Steam."""
+    pass
+
+
+class SteamRateLimitError(SteamAPIError):
+    """Превышение лимита запросов Steam API (HTTP 429)."""
+    pass
+
+
+class SteamPrivacyError(SteamAPIError):
+    """Данные скрыты настройками приватности профиля Steam (HTTP 403)."""
+    pass
+
+
+class SteamDataValidationError(SteamAPIError):
+    """Неполные, пустые или невалидные данные, полученные от Steam."""
+    pass
+
+
 def get_steam_session() -> requests.Session:
     """Возвращает единую сессию requests с настроенными заголовками Steam."""
     global _steam_session
@@ -29,9 +51,37 @@ def get_steam_session() -> requests.Session:
     return _steam_session
 
 
-def steam_get(url: str, params=None, timeout: int = 5) -> requests.Response:
-    """Централизованный GET-запрос к API Steam с единой сессией, заголовками и таймаутом."""
-    return get_steam_session().get(url, params=params, timeout=timeout)
+def steam_get(url: str, params=None, timeout: int = 10) -> requests.Response:
+    """Централизованный GET-запрос к API Steam с единой сессией, заголовками и строгой обработкой ошибок."""
+    try:
+        response = get_steam_session().get(url, params=params, timeout=timeout)
+    except requests.exceptions.Timeout as e:
+        logger.error('Steam API request timed out for %s: %s', url, e)
+        raise SteamConnectionError('Серверы Steam не ответили вовремя (таймаут соединения). Попробуйте позже.') from e
+    except requests.exceptions.SSLError as e:
+        logger.error('Steam API SSL error for %s: %s', url, e)
+        raise SteamConnectionError('Сбой защищённого соединения со Steam (SSL error). Серверы Steam сбросили подключение.') from e
+    except requests.exceptions.ConnectionError as e:
+        logger.error('Steam API connection error for %s: %s', url, e)
+        raise SteamConnectionError('Не удалось подключиться к серверам Steam. Проверьте интернет-соединение.') from e
+    except requests.exceptions.RequestException as e:
+        logger.error('Steam API request failed for %s: %s', url, e)
+        raise SteamConnectionError(f'Сетевая ошибка при обращении к Steam: {e}') from e
+
+    if response.status_code == 429:
+        logger.error('Steam API rate limit exceeded (HTTP 429) for %s', url)
+        raise SteamRateLimitError('Превышен лимит запросов к серверам Steam. Пожалуйста, подождите минуту перед следующим действием.')
+
+    if response.status_code == 403:
+        logger.error('Steam API forbidden (HTTP 403) for %s: %s', url, response.text[:200])
+        raise SteamPrivacyError('Доступ к данным закрыт настройками приватности Steam (HTTP 403).')
+
+    if response.status_code >= 500:
+        logger.error('Steam API server error (HTTP %s) for %s: %s', response.status_code, url, response.text[:200])
+        raise SteamConnectionError(f'Серверы Steam временно недоступны (ошибка {response.status_code}). Попробуйте позже.')
+
+    return response
+
 
 MONTHS = {
     'янв': 1, 'фев': 2, 'мар': 3, 'апр': 4, 'май': 5, 'мая': 5,
@@ -71,36 +121,49 @@ def _parse_release_date(raw_date: str) -> datetime.date | None:
     return None
 
 
-def fetch_app_details(app_id):
-    """Запрашивает данные об игре из Steam Store API."""
+def fetch_app_details(app_id: int):
+    """Запрашивает полные валидные данные об игре из Steam Store API.
+
+    Выбрасывает SteamAPIError при любой ошибке или неполных данных.
+    """
     url = 'https://store.steampowered.com/api/appdetails'
     params = {'appids': app_id, 'l': 'russian', 'cc': 'ru'}
+
+    response = steam_get(url, params=params, timeout=10)
     try:
-        response = steam_get(url, params=params, timeout=10)
-        response.raise_for_status()
         data = response.json()
     except Exception as e:
-        logger.warning('Failed to fetch Steam app details for %s: %s', app_id, e)
-        return None
+        logger.error('Invalid JSON from Steam Store for %s: %s', app_id, response.text[:300])
+        raise SteamDataValidationError(f'Steam вернул некорректный ответ для игры с AppID {app_id}.') from e
 
     app_data = data.get(str(app_id), {})
     if not app_data.get('success'):
-        return None
+        logger.error('Steam Store returned success=False for %s: %s', app_id, app_data)
+        raise SteamDataValidationError(f'Игра с AppID {app_id} не найдена в магазине Steam или недоступна в текущем регионе.')
 
     game_info = app_data.get('data', {})
-    raw_date = game_info.get('release_date', {}).get('date', '')
+    title = (game_info.get('name') or '').strip()
+    if not title:
+        raise SteamDataValidationError(f'Steam Store API не вернул название для игры с AppID {app_id}.')
 
+    header_image = (game_info.get('header_image') or '').strip()
+    if not header_image:
+        raise SteamDataValidationError(f'Steam Store API не вернул обложку для игры «{title}» (AppID {app_id}).')
+
+    raw_date = game_info.get('release_date', {}).get('date', '')
     genres = [
-        g['description']
+        g['description'].strip()
         for g in game_info.get('genres', [])
-        if 'description' in g
+        if 'description' in g and g['description'].strip()
     ]
 
+    description = (game_info.get('short_description') or game_info.get('detailed_description') or '').strip()
+
     return {
-        'title': game_info.get('name', ''),
-        'description': game_info.get('short_description', '') or game_info.get('detailed_description', ''),
+        'title': title,
+        'description': description,
         'release_date': _parse_release_date(raw_date),
-        'header_image': game_info.get('header_image', ''),
+        'header_image': header_image,
         'categories': genres,
     }
 
@@ -135,116 +198,111 @@ def search_steam_games(query: str, limit: int = 12):
     return results
 
 
-def fetch_player_achievement_counts(steam_id: str, app_id: int):
-    """Возвращает (unlocked, total, is_private) для игры.
+def fetch_schema_achievements(app_id: int):
+    """Запрашивает схему всех достижений игры из Steam Web API.
 
-    Если профиль закрыт (403), is_private=True, чтобы не спамить запросами для остальных игр.
+    Выбрасывает SteamAPIError при сбоях сети или ошибках Steam.
+    Возвращает пустой список ТОЛЬКО если Steam подтвердил, что в игре нет достижений.
     """
     api_key = getattr(settings, 'STEAM_API_KEY', '')
     if not api_key:
-        return 0, 0, False
+        raise SteamAPIError('На сервере не настроен STEAM_API_KEY в файле .env.')
+
+    url = 'https://api.steampowered.com/ISteamUserStats/GetSchemaForGame/v2/'
+    res = steam_get(
+        url,
+        params={'key': api_key, 'appid': app_id, 'l': 'russian'},
+        timeout=8,
+    )
+
+    # 400 Bad Request возвращается для игр без поддержки статистики/ачивок
+    if res.status_code == 400:
+        return []
+
+    if res.status_code != 200:
+        logger.error('Steam returned status %s for GetSchemaForGame on %s: %s', res.status_code, app_id, res.text[:200])
+        raise SteamAPIError(f'Steam Web API вернул код {res.status_code} при запросе достижений игры.')
+
+    try:
+        data = res.json()
+    except Exception as e:
+        raise SteamDataValidationError(f'Steam вернул некорректный ответ для достижений игры {app_id}.') from e
+
+    raw_achievements = (
+        data.get('game', {})
+        .get('availableGameStats', {})
+        .get('achievements', [])
+    )
+    items = []
+    for a in raw_achievements:
+        api_name = a.get('name')
+        if not api_name:
+            continue
+        name = a.get('displayName') or api_name
+        items.append({
+            'api_name': api_name,
+            'name': name,
+            'description': a.get('description', '') or '',
+            'icon_url': a.get('icon', '') or '',
+            'icon_gray_url': a.get('icongray') or a.get('icon', '') or '',
+        })
+    return items
+
+
+def fetch_player_unlocked_achievements(steam_id: str, app_id: int):
+    """Возвращает (unlocked_set, total_count, is_private) для игрока.
+
+    Выбрасывает SteamAPIError при сбоях сети/Steam.
+    """
+    api_key = getattr(settings, 'STEAM_API_KEY', '')
+    if not api_key:
+        raise SteamAPIError('На сервере не настроен STEAM_API_KEY в файле .env.')
+    if not steam_id:
+        return set(), 0, False
 
     url_player = 'https://api.steampowered.com/ISteamUserStats/GetPlayerAchievements/v0001/'
     try:
         res = steam_get(
             url_player,
             params={'key': api_key, 'steamid': steam_id, 'appid': app_id},
-            timeout=4,
+            timeout=8,
         )
-        if res.status_code == 403:
-            return 0, 0, True
-        if res.status_code == 200:
-            stats = res.json().get('playerstats', {})
-            if stats.get('success'):
-                achievements = stats.get('achievements', [])
-                total = len(achievements)
-                unlocked = sum(1 for a in achievements if a.get('achieved') == 1)
-                return unlocked, total, False
+    except SteamPrivacyError:
+        return set(), 0, True
+
+    if res.status_code == 403:
+        return set(), 0, True
+
+    if res.status_code == 400:
+        # У игры нет статистики/достижений
+        return set(), 0, False
+
+    if res.status_code != 200:
+        logger.error('Steam returned status %s for GetPlayerAchievements on %s/%s: %s', res.status_code, steam_id, app_id, res.text[:200])
+        raise SteamAPIError(f'Steam вернул код {res.status_code} при запросе достижений игрока.')
+
+    try:
+        stats = res.json().get('playerstats', {})
     except Exception as e:
-        logger.warning('Failed to fetch player achievement counts for %s/%s: %s', steam_id, app_id, e)
+        raise SteamDataValidationError(f'Steam вернул некорректный ответ для достижений игрока {steam_id}.') from e
 
-    return 0, 0, False
+    if not stats.get('success'):
+        error_msg = stats.get('error', '')
+        if 'profile is not public' in error_msg.lower():
+            return set(), 0, True
+        raise SteamAPIError(f'Steam не смог отдать достижения игрока: {error_msg}')
 
-
-def fetch_game_achievements(app_id, steam_id=None):
-    """Возвращает информацию о достижениях игры из Steam с кэшированием.
-
-    Если передан steam_id, помечает выбитые пользователем ачивки.
-    """
-    api_key = getattr(settings, 'STEAM_API_KEY', '')
-    if not api_key:
-        return {'total': 0, 'unlocked': 0, 'has_player_stats': False, 'items': []}
-
-    schema_cache_key = f'steam_schema_achievements_{app_id}'
-    raw_schema = cache.get(schema_cache_key)
-
-    if raw_schema is None:
-        url_schema = 'https://api.steampowered.com/ISteamUserStats/GetSchemaForGame/v2/'
-        try:
-            res = steam_get(
-                url_schema,
-                params={'key': api_key, 'appid': app_id, 'l': 'russian'},
-                timeout=5,
-            )
-            if res.status_code == 200:
-                raw_schema = (
-                    res.json()
-                    .get('game', {})
-                    .get('availableGameStats', {})
-                    .get('achievements', [])
-                )
-                if raw_schema:
-                    cache.set(schema_cache_key, raw_schema, SCHEMA_CACHE_TTL)
-        except Exception as e:
-            logger.warning('Failed to fetch schema achievements for %s: %s', app_id, e)
-
-    if not raw_schema:
-        return {'total': 0, 'unlocked': 0, 'has_player_stats': False, 'items': []}
-
-    unlocked_names = set()
-    has_player_stats = False
-    if steam_id:
-        player_cache_key = f'steam_player_ach_{app_id}_{steam_id}'
-        cached_player = cache.get(player_cache_key)
-        if cached_player is not None:
-            has_player_stats, unlocked_names = cached_player
-        else:
-            url_player = 'https://api.steampowered.com/ISteamUserStats/GetPlayerAchievements/v0001/'
-            try:
-                res_player = steam_get(
-                    url_player,
-                    params={'key': api_key, 'steamid': steam_id, 'appid': app_id, 'l': 'russian'},
-                    timeout=5,
-                )
-                if res_player.status_code == 200:
-                    stats = res_player.json().get('playerstats', {})
-                    if stats.get('success'):
-                        has_player_stats = True
-                        unlocked_names = {
-                            a['apiname']
-                            for a in stats.get('achievements', [])
-                            if a.get('achieved') == 1
-                        }
-                        cache.set(player_cache_key, (has_player_stats, unlocked_names), PLAYER_ACH_CACHE_TTL)
-            except Exception as e:
-                logger.warning('Failed to fetch player achievements for %s/%s: %s', app_id, steam_id, e)
-
-    items = []
-    for a in raw_schema:
-        api_name = a.get('name')
-        achieved = api_name in unlocked_names
-        items.append({
-            'name': a.get('displayName') or api_name,
-            'description': a.get('description', ''),
-            'icon': a.get('icon', ''),
-            'icongray': a.get('icongray') or a.get('icon', ''),
-            'achieved': achieved,
-        })
-
-    return {
-        'total': len(items),
-        'unlocked': len(unlocked_names),
-        'has_player_stats': has_player_stats,
-        'items': items,
+    achievements = stats.get('achievements', [])
+    total = len(achievements)
+    unlocked_set = {
+        a['apiname']
+        for a in achievements
+        if a.get('achieved') == 1
     }
+    return unlocked_set, total, False
 
+
+def fetch_player_achievement_counts(steam_id: str, app_id: int):
+    """Возвращает (unlocked, total, is_private) для игры."""
+    unlocked_set, total, is_priv = fetch_player_unlocked_achievements(steam_id, app_id)
+    return len(unlocked_set), total, is_priv
