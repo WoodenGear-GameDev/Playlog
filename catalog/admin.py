@@ -8,8 +8,8 @@ from .sync import sync_game
 class AchievementInline(admin.TabularInline):
     model = Achievement
     extra = 0
-    fields = ('name', 'api_name', 'description')
-    readonly_fields = ('api_name',)
+    fields = ('name', 'api_name', 'global_percent', 'description')
+    readonly_fields = ('api_name', 'global_percent')
 
 
 @admin.register(Category)
@@ -21,7 +21,7 @@ class CategoryAdmin(admin.ModelAdmin):
 
 @admin.register(Game)
 class GameAdmin(admin.ModelAdmin):
-    list_display = ('__str__', 'steam_app_id', 'release_date')
+    list_display = ('__str__', 'steam_app_id', 'steam_review_desc', 'steam_review_percent', 'release_date')
     search_fields = ('title', 'steam_app_id')
     filter_horizontal = ('categories',)
     inlines = [AchievementInline]
@@ -73,7 +73,7 @@ class ReviewVoteAdmin(admin.ModelAdmin):
 
 @admin.register(Achievement)
 class AchievementAdmin(admin.ModelAdmin):
-    list_display = ('name', 'game', 'api_name')
+    list_display = ('name', 'game', 'api_name', 'global_percent')
     search_fields = ('name', 'api_name', 'game__title')
     list_filter = ('game',)
     raw_id_fields = ('game',)

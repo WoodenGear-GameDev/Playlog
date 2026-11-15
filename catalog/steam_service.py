@@ -306,3 +306,106 @@ def fetch_player_achievement_counts(steam_id: str, app_id: int):
     """Возвращает (unlocked, total, is_private) для игры."""
     unlocked_set, total, is_priv = fetch_player_unlocked_achievements(steam_id, app_id)
     return len(unlocked_set), total, is_priv
+
+
+def fetch_global_achievement_percentages(app_id: int) -> dict[str, float]:
+    """Возвращает словарь {api_name: percent_float} глобальной статистики выбивания достижений."""
+    url = 'https://api.steampowered.com/ISteamUserStats/GetGlobalAchievementPercentagesForApp/v2/'
+    try:
+        res = steam_get(url, params={'gameid': app_id}, timeout=8)
+    except SteamPrivacyError:
+        # У программ, софта или игр без публичной статистики Steam возвращает 403
+        return {}
+
+    if res.status_code in (400, 404):
+        return {}
+
+    if res.status_code != 200:
+        logger.error(
+            'Steam returned status %s for GetGlobalAchievementPercentages on %s: %s',
+            res.status_code,
+            app_id,
+            res.text[:200],
+        )
+        raise SteamAPIError(f'Steam вернул код {res.status_code} при запросе редкости достижений.')
+
+    try:
+        data = res.json()
+    except Exception as e:
+        raise SteamDataValidationError(
+            f'Steam вернул некорректный ответ редкости достижений игры {app_id}.'
+        ) from e
+
+    ach_list = data.get('achievementpercentages', {}).get('achievements', [])
+    result = {}
+    for item in ach_list:
+        name = item.get('name')
+        if name:
+            try:
+                result[name] = round(float(item.get('percent', 0.0)), 1)
+            except (ValueError, TypeError):
+                result[name] = 0.0
+    return result
+
+
+REVIEW_SCORE_DESCRIPTIONS = {
+    'Overwhelmingly Positive': 'Крайне положительные',
+    'Very Positive': 'Очень положительные',
+    'Positive': 'Положительные',
+    'Mostly Positive': 'В основном положительные',
+    'Mixed': 'Смешанные',
+    'Mostly Negative': 'В основном отрицательные',
+    'Negative': 'Отрицательные',
+    'Very Negative': 'Очень отрицательные',
+    'Overwhelmingly Negative': 'Крайне отрицательные',
+}
+
+
+def fetch_game_review_summary(app_id: int) -> dict:
+    """Запрашивает сводку пользовательских отзывов Steam (рейтинг, %, общее число)."""
+    api_key = getattr(settings, 'STEAM_API_KEY', '')
+    if not api_key:
+        raise SteamAPIError('На сервере не настроен STEAM_API_KEY в файле .env.')
+
+    url = 'https://api.steampowered.com/IUserReviewsService/GetAppReviews/v1/'
+    try:
+        res = steam_get(url, params={'key': api_key, 'appid': app_id, 'num_per_page': 0}, timeout=8)
+    except SteamPrivacyError:
+        return {'desc': '', 'percent': None, 'total': 0}
+
+    if res.status_code in (400, 404):
+        return {'desc': '', 'percent': None, 'total': 0}
+
+    if res.status_code != 200:
+        logger.error(
+            'Steam returned status %s for GetAppReviews on %s: %s',
+            res.status_code,
+            app_id,
+            res.text[:200],
+        )
+        raise SteamAPIError(f'Steam вернул код {res.status_code} при запросе отзывов игры.')
+
+    try:
+        data = res.json().get('response', {})
+    except Exception as e:
+        raise SteamDataValidationError(
+            f'Steam вернул некорректный ответ отзывов игры {app_id}.'
+        ) from e
+
+    qs = data.get('query_summary') or {}
+    raw_desc = qs.get('review_score_desc', '')
+    desc = REVIEW_SCORE_DESCRIPTIONS.get(raw_desc, raw_desc)
+    total_reviews = int(qs.get('total_reviews', 0) or 0)
+    total_positive = int(qs.get('total_positive', 0) or 0)
+
+    percent = None
+    if total_reviews > 0:
+        percent = round((total_positive / total_reviews) * 100)
+
+    return {
+        'desc': desc,
+        'percent': percent,
+        'total': total_reviews,
+    }
+
+

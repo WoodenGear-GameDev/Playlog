@@ -29,6 +29,10 @@ class Game(models.Model):
         blank=True,
         verbose_name='Категории',
     )
+    steam_review_desc = models.CharField('Оценка отзывов Steam', max_length=100, blank=True)
+    steam_review_percent = models.PositiveSmallIntegerField('Положительных отзывов (%)', null=True, blank=True)
+    steam_review_total = models.PositiveIntegerField('Всего отзывов Steam', default=0)
+    steam_synced_at = models.DateTimeField('Синхронизировано со Steam', null=True, blank=True)
 
     class Meta:
         verbose_name = 'Игра'
@@ -37,6 +41,14 @@ class Game(models.Model):
 
     def __str__(self):
         return self.title or f'Steam app {self.steam_app_id}'
+
+    @property
+    def steam_store_url(self):
+        return f'https://store.steampowered.com/app/{self.steam_app_id}/' if self.steam_app_id else ''
+
+    @property
+    def steam_community_reviews_url(self):
+        return f'https://steamcommunity.com/app/{self.steam_app_id}/reviews/' if self.steam_app_id else ''
 
 
 RATING_CHOICES = [(i, str(i)) for i in range(1, 11)]
@@ -118,6 +130,7 @@ class Achievement(models.Model):
     description = models.TextField('Описание', blank=True)
     icon_url = models.URLField('Цветная иконка', max_length=500, blank=True)
     icon_gray_url = models.URLField('Серая иконка', max_length=500, blank=True)
+    global_percent = models.FloatField('Процент получения в мире', default=0.0)
     unlocked_by = models.ManyToManyField(
         'accounts.Profile',
         related_name='unlocked_achievements',
@@ -138,3 +151,11 @@ class Achievement(models.Model):
 
     def __str__(self):
         return f'{self.game.title} — {self.name}'
+
+    @property
+    def is_rare(self):
+        return 0.0 < self.global_percent <= 10.0
+
+    @property
+    def is_ultra_rare(self):
+        return 0.0 < self.global_percent <= 3.0
