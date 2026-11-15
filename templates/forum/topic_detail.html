@@ -21,13 +21,13 @@
         {% endif %}
     </div>
 
-    <!-- Главный пост темы -->
-    <article class="topic-body border border-paper-300 dark:border-carbon-800 bg-paper-100 dark:bg-carbon-900">
+    <!-- Главный пост темы (подсветка для автора темы + аватар) -->
+    <article class="topic-body border {% if topic.is_deleted %}opacity-75 border-paper-300 dark:border-carbon-800 bg-paper-100 dark:bg-carbon-900{% elif user.is_authenticated and topic.author_id == user.pk %}border-signal-500/60 dark:border-signal-500/50 bg-signal-500/[0.04] dark:bg-signal-500/[0.06]{% else %}border-paper-300 dark:border-carbon-800 bg-paper-100 dark:bg-carbon-900{% endif %}">
         <!-- Шапка темы -->
-        <div class="px-6 py-4 border-b border-paper-300 dark:border-carbon-800 bg-paper-50 dark:bg-carbon-950/60 space-y-2">
+        <div class="px-6 py-4 border-b {% if not topic.is_deleted and user.is_authenticated and topic.author_id == user.pk %}border-signal-500/30 bg-signal-500/10{% else %}border-paper-300 dark:border-carbon-800 bg-paper-50 dark:bg-carbon-950/60{% endif %} space-y-3">
             <div class="flex flex-wrap items-center justify-between gap-2 font-mono text-xs">
                 <span class="px-1.5 py-0.5 bg-signal-500/15 border border-signal-500/40 text-signal-600 dark:text-signal-400 font-bold text-[10px]">
-                    [THREAD // #{{ topic.pk }}]
+                    [THREAD]
                 </span>
                 <span class="text-zinc-500 dark:text-zinc-400">
                     {{ topic.created_at|date:"d.m.Y H:i" }}
@@ -38,8 +38,27 @@
                 {{ topic.title }}
             </h1>
 
-            <div class="font-mono text-xs text-zinc-600 dark:text-zinc-400">
-                Автор: <strong class="text-signal-600 dark:text-signal-400">{% if topic.author_id %}@{% endif %}{{ topic.author_name }}</strong>
+            <!-- Автор темы с аватаркой -->
+            <div class="flex items-center gap-2.5 pt-1 font-mono text-xs text-zinc-600 dark:text-zinc-400">
+                {% if topic.author and topic.author.profile.avatar %}
+                    <img src="{{ topic.author.profile.avatar.url }}"
+                         alt="{{ topic.author_name }}"
+                         class="w-7 h-7 object-cover border border-signal-500 flex-shrink-0">
+                {% else %}
+                    <div class="w-7 h-7 bg-signal-500/15 border border-signal-500/50 text-signal-600 dark:text-signal-400 font-bold flex items-center justify-center text-xs flex-shrink-0">
+                        {{ topic.author_name|slice:":1"|upper }}
+                    </div>
+                {% endif %}
+
+                <span>
+                    Автор: <strong class="text-signal-600 dark:text-signal-400">{% if topic.author_id %}@{% endif %}{{ topic.author_name }}</strong>
+                </span>
+
+                {% if not topic.is_deleted and user.is_authenticated and topic.author_id == user.pk %}
+                    <span class="px-1.5 py-0.5 text-[10px] font-bold bg-signal-500/20 border border-signal-500/50 text-signal-700 dark:text-signal-400">
+                        ВЫ
+                    </span>
+                {% endif %}
             </div>
         </div>
 
@@ -84,7 +103,8 @@
              data-live="{% if live %}1{% else %}0{% endif %}"
              data-updates-url="{% url 'topic_updates' topic.pk %}"
              data-last-id="{{ last_id }}"
-             data-page="{{ page.number }}">
+             data-page="{{ page.number }}"
+             data-start-index="{{ page.start_index|default:1 }}">
             {% for post in page %}
                 {% include 'forum/_post.html' %}
             {% empty %}

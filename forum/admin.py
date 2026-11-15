@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Post, Topic
+from .models import Post, PostImage, Topic
 
 
 @admin.register(Topic)
@@ -10,9 +10,19 @@ class TopicAdmin(admin.ModelAdmin):
     search_fields = ('title', 'author__username')
 
 
+class PostImageInline(admin.TabularInline):
+    model = PostImage
+    extra = 0
+    readonly_fields = ('image', 'position')
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+
 @admin.register(Post)
 class PostAdmin(admin.ModelAdmin):
     list_display = ('__str__', 'topic', 'game', 'author', 'created_at', 'is_deleted')
     list_filter = ('is_deleted',)
     search_fields = ('body', 'author__username')
     raw_id_fields = ('topic', 'game', 'reply_to')
+    inlines = [PostImageInline]

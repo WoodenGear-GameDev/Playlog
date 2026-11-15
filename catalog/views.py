@@ -86,7 +86,7 @@ def game_detail(request, pk):
 
     reviews_qs = (
         game.ratings.exclude(text='')
-        .select_related('user')
+        .select_related('user__profile')
         .annotate(
             helpful_count=Count('votes', filter=Q(votes__is_helpful=True)),
             unhelpful_count=Count('votes', filter=Q(votes__is_helpful=False)),
