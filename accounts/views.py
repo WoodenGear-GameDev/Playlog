@@ -18,6 +18,7 @@ import time
 from urllib.parse import urlencode
 
 from .steam_openid import build_login_url, verify_assertion
+from .steam_service import sync_profile_library
 
 from .confirmation import (
     activation_token,
@@ -168,7 +169,33 @@ def steam_link_callback(request):
     if old_steam_id and old_steam_id != steam_id:
         profile.library.all().delete()
 
-    messages.success(request, 'Steam-аккаунт подтверждён и привязан.')
+    success, count, error_msg = sync_profile_library(profile)
+    if success:
+        messages.success(
+            request, f'Steam-аккаунт привязан! Загружено игр: {count}.'
+        )
+    else:
+        messages.success(request, 'Steam-аккаунт подтверждён и привязан.')
+        if error_msg:
+            messages.warning(request, error_msg)
+    return redirect('profile')
+
+
+@login_required
+@require_POST
+def steam_sync_library(request):
+    profile, _ = Profile.objects.get_or_create(user=request.user)
+    if not profile.steam_id:
+        messages.error(request, 'Сначала привяжите Steam-аккаунт.')
+        return redirect('profile')
+
+    success, count, error_msg = sync_profile_library(profile)
+    if success:
+        messages.success(
+            request, f'Библиотека успешно синхронизирована! Всего игр: {count}.'
+        )
+    else:
+        messages.error(request, error_msg or 'Не удалось синхронизировать библиотеку со Steam.')
     return redirect('profile')
 
 
@@ -192,12 +219,15 @@ def library_open(request, pk):
     if game:
         return redirect('game_detail', pk=game.pk)
 
-    messages.info(
-        request, f'Игры «{entry.display_name}» пока нет в каталоге сайта.'
-    )
-    page_number = request.GET.get('page', '')
-    suffix = f'?page={page_number}' if page_number.isdigit() else ''
-    return redirect(f"{reverse('profile')}{suffix}#library")
+    if request.method == 'POST':
+        from catalog.sync import sync_game
+
+        game = Game.objects.create(steam_app_id=entry.steam_app_id, title=entry.name)
+        sync_game(game)
+        messages.success(request, f'Игра «{game.title}» успешно добавлена в каталог.')
+        return redirect('game_detail', pk=game.pk)
+
+    return render(request, 'accounts/library_add_confirm.html', {'entry': entry})
 
 class PasswordChange(SuccessMessageMixin, auth_views.PasswordChangeView):
     template_name = 'accounts/password_change.html'

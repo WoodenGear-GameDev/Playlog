@@ -19,6 +19,7 @@ urlpatterns = [
     path('steam/link/', views.steam_link_start, name='steam_link'),
     path('steam/callback/', views.steam_link_callback, name='steam_callback'),
     path('steam/unlink/', views.steam_unlink, name='steam_unlink'),
+    path('steam/sync/', views.steam_sync_library, name='steam_sync'),
     path('library/<int:pk>/open/', views.library_open, name='library_open'),
     path('password/change/', views.PasswordChange.as_view(), name='password_change'),
     path('password/reset/', views.PasswordResetRequest.as_view(), name='password_reset'),

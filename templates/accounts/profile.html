@@ -94,13 +94,22 @@
 
             <div class="px-6 py-4 border-t border-paper-300 dark:border-carbon-800 bg-paper-50 dark:bg-carbon-950/60 flex items-center justify-end">
                 {% if profile.steam_id %}
-                    <form method="post" action="{% url 'steam_unlink' %}">
-                        {% csrf_token %}
-                        <button type="submit"
-                                class="px-4 py-2 text-xs font-mono font-bold uppercase tracking-wider border border-paper-300 dark:border-carbon-800 hover:border-red-500 dark:hover:border-red-500 bg-paper-100 dark:bg-carbon-900 text-zinc-700 dark:text-zinc-300 hover:text-red-600 dark:hover:text-red-400 transition-colors">
-                            ОТВЯЗАТЬ STEAM
-                        </button>
-                    </form>
+                    <div class="flex items-center gap-3">
+                        <form method="post" action="{% url 'steam_sync' %}">
+                            {% csrf_token %}
+                            <button type="submit"
+                                    class="px-4 py-2 text-xs font-mono font-bold uppercase tracking-wider bg-signal-500 hover:bg-signal-400 text-carbon-950 border border-signal-500 transition-colors">
+                                ОБНОВИТЬ ИГРЫ ⟳
+                            </button>
+                        </form>
+                        <form method="post" action="{% url 'steam_unlink' %}">
+                            {% csrf_token %}
+                            <button type="submit"
+                                    class="px-4 py-2 text-xs font-mono font-bold uppercase tracking-wider border border-paper-300 dark:border-carbon-800 hover:border-red-500 dark:hover:border-red-500 bg-paper-100 dark:bg-carbon-900 text-zinc-700 dark:text-zinc-300 hover:text-red-600 dark:hover:text-red-400 transition-colors">
+                                ОТВЯЗАТЬ STEAM
+                            </button>
+                        </form>
+                    </div>
                 {% else %}
                     <form method="post" action="{% url 'steam_link' %}">
                         {% csrf_token %}
@@ -176,6 +185,15 @@
                 </span>
                 {% endif %}
             </div>
+            {% if profile.steam_id %}
+            <form method="post" action="{% url 'steam_sync' %}">
+                {% csrf_token %}
+                <button type="submit"
+                        class="px-3 py-1 text-xs font-mono font-bold uppercase tracking-wider border border-signal-500 bg-signal-500/10 hover:bg-signal-500 text-signal-600 dark:text-signal-400 hover:text-carbon-950 dark:hover:text-carbon-950 transition-colors">
+                    СИНХРОНИЗИРОВАТЬ ⟳
+                </button>
+            </form>
+            {% endif %}
         </div>
 
         {% if page.paginator.count %}

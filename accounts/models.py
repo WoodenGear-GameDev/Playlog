@@ -55,6 +55,7 @@ class LibraryGame(models.Model):
     steam_app_id = models.PositiveIntegerField('Steam AppID')
     name = models.CharField('Название', max_length=200, blank=True)
     playtime_minutes = models.PositiveIntegerField('Время в игре (мин)', default=0)
+    header_image = models.URLField('Обложка (URL)', max_length=500, blank=True)
 
     class Meta:
         verbose_name = 'Игра в библиотеке'
