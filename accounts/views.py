@@ -25,7 +25,8 @@ from .confirmation import (
     send_confirmation_email,
 )
 from .forms import AvatarForm, RegisterForm, ResendConfirmationForm, UsernameForm, DeleteAccountForm
-from catalog.models import Game
+from catalog.models import Game, Rating
+from forum.models import GameInvite, Post, Topic
 from .models import LibraryGame, Profile
 from .deletion import DeletionError, check_can_delete, content_summary, delete_user_account
 from .self_delete import read_token, send_delete_email
@@ -315,3 +316,59 @@ def profile_privacy(request):
     else:
         messages.success(request, 'Steam-профиль и библиотека скрыты от других пользователей.')
     return redirect('profile')
+
+PUBLIC_LIBRARY_PER_PAGE = 24
+
+
+def public_profile(request, pk):
+    owner = get_object_or_404(get_user_model(), pk=pk, is_active=True)
+    owner_profile = Profile.objects.filter(user=owner).first()
+    is_own = request.user.is_authenticated and request.user.pk == owner.pk
+
+    stats = {
+        'ratings': Rating.objects.filter(user=owner).count(),
+        'reviews': Rating.objects.filter(user=owner).exclude(text='').count(),
+        'topics': Topic.objects.filter(author=owner, is_deleted=False).count(),
+        'posts': Post.objects.filter(author=owner, is_deleted=False).count(),
+    }
+    ratings = list(
+        Rating.objects.filter(user=owner)
+        .select_related('game')
+        .order_by('-updated_at', '-pk')[:10]
+    )
+    topics = list(
+        Topic.objects.filter(author=owner, is_deleted=False)
+        .select_related('game')
+        .order_by('-created_at', '-pk')[:10]
+    )
+    invites = list(
+        GameInvite.objects.active().filter(author=owner).select_related('game')
+    )
+
+    steam_public = bool(
+        owner_profile and owner_profile.steam_id and owner_profile.show_steam
+    )
+    library_page = None
+    library_entries = []
+    if steam_public:
+        library_page = Paginator(
+            owner_profile.library.all(), PUBLIC_LIBRARY_PER_PAGE
+        ).get_page(request.GET.get('page'))
+        library_entries = list(library_page)
+        ids = [entry.steam_app_id for entry in library_entries]
+        catalog = {g.steam_app_id: g for g in Game.objects.filter(steam_app_id__in=ids)}
+        for entry in library_entries:
+            entry.catalog_game = catalog.get(entry.steam_app_id)
+
+    return render(request, 'accounts/public_profile.html', {
+        'owner': owner,
+        'owner_profile': owner_profile,
+        'is_own': is_own,
+        'stats': stats,
+        'ratings': ratings,
+        'topics': topics,
+        'invites': invites,
+        'steam_public': steam_public,
+        'library_page': library_page,
+        'library_entries': library_entries,
+    })
