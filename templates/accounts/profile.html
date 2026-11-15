@@ -84,6 +84,11 @@
                                 {{ profile.steam_id }} ↗
                             </a>
                         </div>
+                        {% if profile.library_synced_at and page.paginator.count %}
+                        <p class="text-[11px] text-zinc-500 dark:text-zinc-400">
+                            Библиотека обновлена: {{ profile.library_synced_at|date:"d.m.Y H:i" }}
+                        </p>
+                        {% endif %}
                     </div>
                 {% else %}
                     <p class="text-xs sm:text-sm font-mono text-zinc-600 dark:text-zinc-400 leading-relaxed">
@@ -92,8 +97,16 @@
                 {% endif %}
             </div>
 
-            <div class="px-6 py-4 border-t border-paper-300 dark:border-carbon-800 bg-paper-50 dark:bg-carbon-950/60 flex items-center justify-end">
+            <div class="px-6 py-4 border-t border-paper-300 dark:border-carbon-800 bg-paper-50 dark:bg-carbon-950/60 flex flex-wrap items-center justify-end gap-3">
                 {% if profile.steam_id %}
+                    <form method="post" action="{% url 'library_refresh' %}">
+                        {% csrf_token %}
+                        <button type="submit"
+                                {% if library_cooldown %}disabled{% endif %}
+                                class="px-4 py-2 text-xs font-mono font-bold uppercase tracking-wider border border-signal-500 bg-signal-500/10 hover:bg-signal-500 text-signal-600 dark:text-signal-400 hover:text-carbon-950 dark:hover:text-carbon-950 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                            {% if library_cooldown %}ПОДОЖДИТЕ {{ library_cooldown }} С{% else %}ОБНОВИТЬ БИБЛИОТЕКУ{% endif %}
+                        </button>
+                    </form>
                     <form method="post" action="{% url 'steam_unlink' %}">
                         {% csrf_token %}
                         <button type="submit"

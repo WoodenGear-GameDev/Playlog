@@ -6,11 +6,12 @@ def fetch_app_details(app_id):
     {
         'title': str,
         'description': str,
-        'release_date': datetime.date или None,
-        'header_image': str (URL),
+        'release_date': datetime.date,
+        'header_image': str (URL, http или https, до 500 символов),
         'categories': list[str] (названия жанров Steam),
     }
-    Любого ключа может не быть. Дату нужно преобразовать в date самому:
-    Steam отдаёт её строкой.
+    Любого ключа может не быть. Поля, которых Steam не вернул, пропускайте,
+    не подставляйте пустые строки: пропущенные поля на сайте не меняются.
+    Исключения можно не ловить: сайт покажет администратору сообщение об ошибке.
     """
     return None
