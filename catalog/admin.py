@@ -1,8 +1,7 @@
 from django.contrib import admin, messages
 
 from .models import Category, Game, Rating, ReviewVote
-from .sync import sync_game
-
+from .sync import describe_result, sync_game
 
 @admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):
@@ -13,27 +12,37 @@ class CategoryAdmin(admin.ModelAdmin):
 
 @admin.register(Game)
 class GameAdmin(admin.ModelAdmin):
-    list_display = ('__str__', 'steam_app_id', 'release_date')
+    list_display = ('__str__', 'steam_app_id', 'release_date', 'steam_synced_at')
     search_fields = ('title', 'steam_app_id')
     filter_horizontal = ('categories',)
+    readonly_fields = ('steam_synced_at',)
     actions = ['refresh_from_steam']
 
     def save_related(self, request, form, formsets, change):
         super().save_related(request, form, formsets, change)
         if not change:
-            if sync_game(form.instance):
-                self.message_user(request, 'Данные подтянуты из Steam.')
+            result = sync_game(form.instance)
+            if result:
+                self.message_user(request, describe_result(result))
             else:
                 self.message_user(
                     request,
-                    'Не удалось получить данные из Steam. Заполните поля вручную.',
+                    f'{result.error} Заполните поля вручную.',
                     level=messages.WARNING,
                 )
 
-    @admin.action(description='Обновить из Steam (перезаписать поля)')
+    @admin.action(description='Обновить из Steam (заменить поля, которые удалось получить)')
     def refresh_from_steam(self, request, queryset):
-        updated = sum(sync_game(game, overwrite=True) for game in queryset)
-        self.message_user(request, f'Обновлено игр: {updated} из {queryset.count()}')
+        done = 0
+        for game in queryset:
+            result = sync_game(game, overwrite=True)
+            if result:
+                done += 1
+            else:
+                self.message_user(
+                    request, f'{game}: {result.error}', level=messages.WARNING
+                )
+        self.message_user(request, f'Обновлено игр: {done} из {queryset.count()}.')
 
 @admin.register(Rating)
 class RatingAdmin(admin.ModelAdmin):

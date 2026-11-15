@@ -9,4 +9,5 @@ urlpatterns = [
     path('games/<int:pk>/rate/delete/', views.delete_rating, name='delete_rating'),
     path('games/<int:game_pk>/reviews/<int:pk>/vote/', views.vote_review, name='vote_review'),
     path('games/<int:game_pk>/reviews/<int:pk>/delete/', views.delete_review, name='delete_review'),
+    path('games/<int:pk>/refresh/', views.refresh_game, name='refresh_game'),
 ]
