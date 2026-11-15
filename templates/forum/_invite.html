@@ -1,0 +1,91 @@
+<article id="invite-{{ invite.pk }}"
+         class="invite border {% if invite.author_id == user.pk %}border-signal-500/60 dark:border-signal-500/50 bg-signal-500/[0.04] dark:bg-signal-500/[0.06]{% else %}border-paper-300 dark:border-carbon-800 bg-paper-100 dark:bg-carbon-900{% endif %}">
+
+    <!-- Шапка: автор, время создания, обратный отсчёт -->
+    <div class="px-4 py-2.5 border-b {% if invite.author_id == user.pk %}border-signal-500/30 bg-signal-500/10{% else %}border-paper-300 dark:border-carbon-800 bg-paper-50 dark:bg-carbon-950/60{% endif %} flex flex-wrap items-center justify-between gap-2 font-mono text-xs">
+        <div class="flex items-center gap-2.5">
+            {% if invite.author.profile.avatar %}
+                <img src="{{ invite.author.profile.avatar.url }}"
+                     alt="{{ invite.author.username }}"
+                     class="w-6 h-6 object-cover border border-signal-500 flex-shrink-0">
+            {% else %}
+                <div class="w-6 h-6 bg-signal-500/15 border border-signal-500/50 text-signal-600 dark:text-signal-400 font-bold flex items-center justify-center text-[11px] flex-shrink-0">
+                    {{ invite.author.username|slice:":1"|upper }}
+                </div>
+            {% endif %}
+
+            <strong class="text-zinc-900 dark:text-zinc-100">@{{ invite.author.username }}</strong>
+            {% if invite.author_id == user.pk %}
+                <span class="px-1.5 py-0.5 text-[10px] font-bold bg-signal-500/20 border border-signal-500/50 text-signal-700 dark:text-signal-400">ВЫ</span>
+            {% endif %}
+            <span class="text-zinc-400 dark:text-zinc-600">·</span>
+            <span class="text-zinc-500 dark:text-zinc-400">{{ invite.created_at|date:"d.m.Y H:i" }}</span>
+        </div>
+
+        <span data-expires="{{ invite.expires_at|date:'U' }}"
+              class="px-2 py-0.5 font-bold border border-signal-500/50 bg-signal-500/10 text-signal-600 dark:text-signal-400">
+            ДО {{ invite.expires_at|date:"H:i" }}
+        </span>
+    </div>
+
+    <!-- Описание, ссылка и код -->
+    <div class="p-4 space-y-3">
+        <div class="text-sm text-zinc-800 dark:text-zinc-200 leading-relaxed">
+            {{ invite.description|linebreaksbr }}
+        </div>
+
+        {% if user.is_authenticated %}
+            {% if invite.link %}
+            <div class="invite-link flex flex-wrap items-center gap-2 p-2.5 border border-paper-300 dark:border-carbon-800 bg-paper-50 dark:bg-carbon-950 font-mono text-xs">
+                <span class="text-zinc-500 uppercase tracking-wider">ССЫЛКА:</span>
+                <a href="{{ invite.link }}" rel="noopener noreferrer"
+                   class="min-w-0 break-all font-bold text-signal-600 dark:text-signal-400 hover:underline">{{ invite.link }}</a>
+                <button type="button" data-copy="{{ invite.link }}"
+                        class="px-2 py-1 text-[10px] font-bold uppercase border border-paper-300 dark:border-carbon-800 hover:border-signal-500 text-zinc-600 dark:text-zinc-400 hover:text-signal-600 dark:hover:text-signal-400 transition-colors">
+                    КОПИРОВАТЬ
+                </button>
+            </div>
+            {% endif %}
+
+            {% if invite.join_code %}
+            <div class="invite-code flex flex-wrap items-center gap-2 p-2.5 border border-paper-300 dark:border-carbon-800 bg-paper-50 dark:bg-carbon-950 font-mono text-xs">
+                <span class="text-zinc-500 uppercase tracking-wider">КОД / АДРЕС:</span>
+                <code class="min-w-0 break-all font-bold text-zinc-900 dark:text-zinc-100">{{ invite.join_code }}</code>
+                <button type="button" data-copy="{{ invite.join_code }}"
+                        class="px-2 py-1 text-[10px] font-bold uppercase border border-paper-300 dark:border-carbon-800 hover:border-signal-500 text-zinc-600 dark:text-zinc-400 hover:text-signal-600 dark:hover:text-signal-400 transition-colors">
+                    КОПИРОВАТЬ
+                </button>
+            </div>
+            {% endif %}
+
+            {% if invite.author.profile.steam_id %}
+            <div class="font-mono text-xs">
+                <a href="https://steamcommunity.com/profiles/{{ invite.author.profile.steam_id }}"
+                   target="_blank" rel="noopener noreferrer"
+                   class="font-bold text-signal-600 dark:text-signal-400 hover:underline">
+                    Профиль автора в Steam ↗
+                </a>
+            </div>
+            {% endif %}
+        {% else %}
+            <div class="p-2.5 border border-paper-300 dark:border-carbon-800 bg-paper-50 dark:bg-carbon-950 font-mono text-xs text-zinc-600 dark:text-zinc-400">
+                <a href="{% url 'login' %}?next={{ request.get_full_path|urlencode }}"
+                   class="font-bold text-signal-600 dark:text-signal-400 hover:underline">Войдите</a>,
+                чтобы увидеть ссылку или код для подключения.
+            </div>
+        {% endif %}
+
+        {% if invite.author_id == user.pk or user.is_staff %}
+        <div class="pt-3 border-t border-paper-300/70 dark:border-carbon-800/80 flex flex-wrap items-center gap-2 font-mono text-xs">
+            <form method="post" action="{% url 'invite_close' invite.game_id invite.pk %}" class="inline"
+                  onsubmit="return confirm('Завершить приглашение досрочно?');">
+                {% csrf_token %}
+                <button type="submit"
+                        class="px-2.5 py-1 font-semibold uppercase border border-paper-300 dark:border-carbon-800 hover:border-red-500 dark:hover:border-red-500 bg-paper-50 dark:bg-carbon-950 text-zinc-600 dark:text-zinc-400 hover:text-red-600 dark:hover:text-red-400 transition-colors">
+                    ЗАВЕРШИТЬ ПРИГЛАШЕНИЕ{% if invite.author_id != user.pk %} (МОДЕРАТОР){% endif %}
+                </button>
+            </form>
+        </div>
+        {% endif %}
+    </div>
+</article>
