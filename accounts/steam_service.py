@@ -15,7 +15,48 @@ from .models import LibraryGame, SteamAccount, SteamLibrary
 logger = logging.getLogger(__name__)
 
 STEAM_OWNED_GAMES_URL = 'https://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/'
+STEAM_TOP_ACHIEVEMENTS_URL = 'https://api.steampowered.com/IPlayerService/GetTopAchievementsForGames/v1/'
 COOLDOWN_SECONDS = 120
+
+
+def fetch_games_achievement_counts(steam_id: str, app_ids: list[int]) -> dict[int, tuple[int, int]]:
+    """Запрашивает число выбитых и общее количество достижений для списка игр ОДНИМ пакетным запросом.
+
+    Возвращает словарь: {app_id: (unlocked_count, total_count)}
+    """
+    if not steam_id or not app_ids:
+        return {}
+
+    api_key = getattr(settings, 'STEAM_API_KEY', '')
+    if not api_key:
+        return {}
+
+    results = {}
+    chunk_size = 100
+    for i in range(0, len(app_ids), chunk_size):
+        chunk = app_ids[i:i + chunk_size]
+        params = {
+            'key': api_key,
+            'steamid': steam_id,
+            'max_achievements': 1000,
+        }
+        for idx, aid in enumerate(chunk):
+            params[f'appids[{idx}]'] = aid
+
+        try:
+            res = steam_get(STEAM_TOP_ACHIEVEMENTS_URL, params=params, timeout=10)
+            if res.status_code == 200:
+                games_data = res.json().get('response', {}).get('games', [])
+                for g in games_data:
+                    aid = g.get('appid')
+                    if aid:
+                        total = g.get('total_achievements', 0)
+                        unlocked = len(g.get('achievements', []))
+                        results[aid] = (unlocked, total)
+        except Exception as e:
+            logger.warning('Failed to fetch batch achievement counts: %s', e)
+
+    return results
 
 
 def fetch_user_library(steam_id: str) -> list[dict]:
@@ -121,6 +162,9 @@ def sync_steam_account_library(library: SteamLibrary, force: bool = False):
         for g in Game.objects.filter(steam_app_id__in=seen_app_ids)
     }
 
+    # Получаем количество выбитых и общее число достижений ОДНИМ пакетным запросом
+    ach_counts = fetch_games_achievement_counts(steam_account.steam_id, list(seen_app_ids))
+
     to_create = []
     to_update = []
 
@@ -131,6 +175,12 @@ def sync_steam_account_library(library: SteamLibrary, force: bool = False):
         cat_game = catalog_map.get(app_id)
         cover_url = item.get('cover_url') or f'https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/{app_id}/header.jpg'
         header_img = cat_game.header_image if (cat_game and cat_game.header_image) else cover_url
+
+        ach_unlocked, ach_total = ach_counts.get(app_id, (0, 0))
+        ach_status = (
+            LibraryGame.AchievementStatus.SYNCED if ach_total > 0
+            else LibraryGame.AchievementStatus.NO_ACHIEVEMENTS
+        )
 
         if app_id in existing_games:
             lib_game = existing_games[app_id]
@@ -144,6 +194,16 @@ def sync_steam_account_library(library: SteamLibrary, force: bool = False):
             if header_img and lib_game.header_image != header_img:
                 lib_game.header_image = header_img
                 changed = True
+            if ach_total > 0:
+                if lib_game.achievements_total != ach_total:
+                    lib_game.achievements_total = ach_total
+                    changed = True
+                if lib_game.achievements_unlocked != ach_unlocked:
+                    lib_game.achievements_unlocked = ach_unlocked
+                    changed = True
+                if lib_game.achievement_status != ach_status:
+                    lib_game.achievement_status = ach_status
+                    changed = True
             if changed:
                 to_update.append(lib_game)
         else:
@@ -154,7 +214,9 @@ def sync_steam_account_library(library: SteamLibrary, force: bool = False):
                     name=name,
                     playtime_minutes=playtime,
                     header_image=header_img,
-                    achievement_status=LibraryGame.AchievementStatus.NOT_SYNCED,
+                    achievements_unlocked=ach_unlocked,
+                    achievements_total=ach_total,
+                    achievement_status=ach_status,
                 )
             )
 
@@ -164,7 +226,7 @@ def sync_steam_account_library(library: SteamLibrary, force: bool = False):
         if to_update:
             LibraryGame.objects.bulk_update(
                 to_update,
-                ['name', 'playtime_minutes', 'header_image'],
+                ['name', 'playtime_minutes', 'header_image', 'achievements_unlocked', 'achievements_total', 'achievement_status'],
             )
         # Удаляем игры, которые пользователь убрал из Steam
         library.games.exclude(steam_app_id__in=seen_app_ids).delete()

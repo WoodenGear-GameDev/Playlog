@@ -449,6 +449,29 @@ def user_game_achievements(request, user_pk, steam_app_id):
     library_entry = library.games.filter(steam_app_id=steam_app_id).first() if library else None
     game = Game.objects.filter(steam_app_id=steam_app_id).first()
 
+    if not game:
+        if library_entry:
+            game, _ = Game.objects.get_or_create(
+                steam_app_id=steam_app_id,
+                defaults={
+                    'title': library_entry.display_name,
+                    'header_image': library_entry.display_cover,
+                },
+            )
+
+    if game and game.schema_status != Game.SchemaStatus.READY:
+        from catalog.sync import sync_game_achievements_schema
+        try:
+            sync_game_achievements_schema(game)
+            game.refresh_from_db()
+        except Exception as e:
+            logger.warning('Failed to sync schema for app %s: %s', steam_app_id, e)
+
+    # Синхронизируем выбитые достижения для этой игры
+    sync_user_game_achievements(steam_account, steam_app_id)
+    if library_entry:
+        library_entry.refresh_from_db()
+
     achievements = []
     unlocked_pks = set()
     if game:
