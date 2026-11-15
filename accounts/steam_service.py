@@ -34,6 +34,7 @@ def fetch_user_library(steam_id: str) -> list[dict]:
         'key': api_key,
         'steamid': steam_id,
         'include_appinfo': 1,
+        'include_extended_appinfo': 1,
         'include_played_free_games': 1,
         'format': 'json',
     }
@@ -56,10 +57,16 @@ def fetch_user_library(steam_id: str) -> list[dict]:
         appid = item.get('appid')
         if not appid:
             continue
+        capsule = (item.get('capsule_filename') or '').strip().lstrip('/')
+        if capsule:
+            cover_url = f'https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/{appid}/{capsule}'
+        else:
+            cover_url = f'https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/{appid}/header.jpg'
         results.append({
             'steam_app_id': appid,
             'name': item.get('name', ''),
             'playtime_minutes': item.get('playtime_forever', 0),
+            'cover_url': cover_url,
         })
     return results
 
@@ -122,8 +129,8 @@ def sync_steam_account_library(library: SteamLibrary, force: bool = False):
         name = item['name']
         playtime = item['playtime_minutes']
         cat_game = catalog_map.get(app_id)
-        steam_cover = f'https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/{app_id}/header.jpg'
-        header_img = cat_game.header_image if (cat_game and cat_game.header_image) else steam_cover
+        cover_url = item.get('cover_url') or f'https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/{app_id}/header.jpg'
+        header_img = cat_game.header_image if (cat_game and cat_game.header_image) else cover_url
 
         if app_id in existing_games:
             lib_game = existing_games[app_id]
