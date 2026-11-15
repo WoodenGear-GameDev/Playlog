@@ -1,0 +1,176 @@
+{% extends 'base.html' %}
+
+{% block title %}Приглашения: {{ game }} // PLAYLOG{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+
+    <!-- Верхняя навигация -->
+    <div class="flex flex-wrap items-center justify-between gap-3 border-b border-paper-300 dark:border-carbon-800 pb-4">
+        <div class="flex flex-wrap items-center gap-2">
+            <a href="{% url 'game_detail' game.pk %}"
+               class="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-mono font-bold uppercase tracking-wider border border-paper-300 dark:border-carbon-800 hover:border-signal-500 dark:hover:border-signal-500 bg-paper-100 dark:bg-carbon-900 text-zinc-700 dark:text-zinc-300 hover:text-signal-600 dark:hover:text-signal-400 transition-colors">
+                <span>←</span>
+                <span>К СТРАНИЦЕ ИГРЫ</span>
+            </a>
+            <a href="{% url 'game_chat' game.pk %}"
+               class="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-mono font-bold uppercase tracking-wider border border-paper-300 dark:border-carbon-800 hover:border-signal-500 dark:hover:border-signal-500 bg-paper-100 dark:bg-carbon-900 text-zinc-700 dark:text-zinc-300 hover:text-signal-600 dark:hover:text-signal-400 transition-colors">
+                <span>ОБЩИЙ ЧАТ</span>
+            </a>
+            <a href="{% url 'topic_list' game.pk %}"
+               class="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-mono font-bold uppercase tracking-wider border border-paper-300 dark:border-carbon-800 hover:border-signal-500 dark:hover:border-signal-500 bg-paper-100 dark:bg-carbon-900 text-zinc-700 dark:text-zinc-300 hover:text-signal-600 dark:hover:text-signal-400 transition-colors">
+                <span>ТЕМЫ ФОРУМА</span>
+                <span>→</span>
+            </a>
+        </div>
+
+        <span class="font-mono text-[11px] uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
+            [INVITES // GAME_{{ game.pk }}]
+        </span>
+    </div>
+
+    <!-- Заголовок -->
+    <div class="border-b border-paper-300 dark:border-carbon-800 pb-4">
+        <div class="flex items-center gap-2 mb-1">
+            <span class="w-2 h-2 bg-signal-500"></span>
+            <p class="font-mono text-[10px] uppercase tracking-widest text-signal-600 dark:text-signal-400">
+                [LOOKING_FOR_GROUP]
+            </p>
+        </div>
+        <h1 class="text-2xl sm:text-3xl font-bold font-mono tracking-tight text-zinc-950 dark:text-white">
+            Приглашения играть: {{ game }}
+        </h1>
+    </div>
+
+    <!-- Форма нового приглашения -->
+    <section id="invite-form" class="border border-paper-300 dark:border-carbon-800 bg-paper-100 dark:bg-carbon-900">
+        <div class="px-4 sm:px-6 py-4 border-b border-paper-300 dark:border-carbon-800 bg-paper-50 dark:bg-carbon-950/60 flex items-center justify-between gap-3">
+            <div class="min-w-0">
+                <p class="font-mono text-[10px] uppercase tracking-widest text-signal-600 dark:text-signal-400">
+                    [COMPOSE // INVITE]
+                </p>
+                <h2 class="text-base sm:text-lg font-bold font-mono uppercase tracking-wider text-zinc-950 dark:text-white mt-0.5 truncate">
+                    Новое приглашение
+                </h2>
+            </div>
+            {% if user.is_authenticated %}
+            <span class="font-mono text-[11px] text-zinc-500 dark:text-zinc-400 flex-shrink-0">
+                АКТИВНО: <strong class="text-signal-600 dark:text-signal-400">{{ my_active }} / {{ max_active }}</strong>
+            </span>
+            {% endif %}
+        </div>
+
+        {% if user.is_authenticated %}
+        <form method="post" class="p-4 sm:p-6 space-y-5">
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+            <div class="p-3 border border-red-500 bg-red-500/10 text-xs font-mono text-red-700 dark:text-red-300 space-y-1">
+                {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+            </div>
+            {% endif %}
+
+            <div class="space-y-1.5">
+                <label for="{{ form.description.id_for_label }}" class="block font-mono text-xs font-semibold uppercase tracking-wider text-zinc-700 dark:text-zinc-300">
+                    {{ form.description.label }}
+                </label>
+                <div class="[&_textarea]:w-full [&_textarea]:min-h-[80px] [&_textarea]:p-3 [&_textarea]:text-sm [&_textarea]:font-sans [&_textarea]:border [&_textarea]:border-paper-300 dark:[&_textarea]:border-carbon-800 [&_textarea]:bg-paper-50 dark:[&_textarea]:bg-carbon-950 [&_textarea]:text-zinc-900 dark:[&_textarea]:text-zinc-100 focus:[&_textarea]:outline-none focus:[&_textarea]:border-signal-500">
+                    {{ form.description }}
+                </div>
+                {% for error in form.description.errors %}
+                <p class="text-xs font-mono text-red-600 dark:text-red-400">→ {{ error }}</p>
+                {% endfor %}
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div class="space-y-1.5">
+                    <label for="{{ form.link.id_for_label }}" class="block font-mono text-xs font-semibold uppercase tracking-wider text-zinc-700 dark:text-zinc-300">
+                        {{ form.link.label }}
+                    </label>
+                    <div class="[&_input]:w-full [&_input]:px-3 [&_input]:py-2.5 [&_input]:text-sm [&_input]:font-mono [&_input]:border [&_input]:border-paper-300 dark:[&_input]:border-carbon-800 [&_input]:bg-paper-50 dark:[&_input]:bg-carbon-950 [&_input]:text-zinc-900 dark:[&_input]:text-zinc-100 focus:[&_input]:outline-none focus:[&_input]:border-signal-500">
+                        {{ form.link }}
+                    </div>
+                    {% for error in form.link.errors %}
+                    <p class="text-xs font-mono text-red-600 dark:text-red-400">→ {{ error }}</p>
+                    {% endfor %}
+                    <p class="font-mono text-[11px] text-zinc-500 dark:text-zinc-400">
+                        Ссылка из игры или Steam. Допустимы steam://joinlobby, steam://connect, s.team, Discord.
+                    </p>
+                </div>
+
+                <div class="space-y-1.5">
+                    <label for="{{ form.join_code.id_for_label }}" class="block font-mono text-xs font-semibold uppercase tracking-wider text-zinc-700 dark:text-zinc-300">
+                        {{ form.join_code.label }}
+                    </label>
+                    <div class="[&_input]:w-full [&_input]:px-3 [&_input]:py-2.5 [&_input]:text-sm [&_input]:font-mono [&_input]:border [&_input]:border-paper-300 dark:[&_input]:border-carbon-800 [&_input]:bg-paper-50 dark:[&_input]:bg-carbon-950 [&_input]:text-zinc-900 dark:[&_input]:text-zinc-100 focus:[&_input]:outline-none focus:[&_input]:border-signal-500">
+                        {{ form.join_code }}
+                    </div>
+                    {% for error in form.join_code.errors %}
+                    <p class="text-xs font-mono text-red-600 dark:text-red-400">→ {{ error }}</p>
+                    {% endfor %}
+                    <p class="font-mono text-[11px] text-zinc-500 dark:text-zinc-400">
+                        Если у игры нет ссылки: код лобби, адрес сервера, пароль.
+                    </p>
+                </div>
+            </div>
+
+            <div class="space-y-1.5 max-w-xs">
+                <label for="{{ form.hours.id_for_label }}" class="block font-mono text-xs font-semibold uppercase tracking-wider text-zinc-700 dark:text-zinc-300">
+                    {{ form.hours.label }}
+                </label>
+                <div class="[&_select]:w-full [&_select]:px-3 [&_select]:py-2.5 [&_select]:text-sm [&_select]:font-mono [&_select]:border [&_select]:border-paper-300 dark:[&_select]:border-carbon-800 [&_select]:bg-paper-50 dark:[&_select]:bg-carbon-950 [&_select]:text-zinc-900 dark:[&_select]:text-zinc-100 focus:[&_select]:outline-none focus:[&_select]:border-signal-500">
+                    {{ form.hours }}
+                </div>
+                {% for error in form.hours.errors %}
+                <p class="text-xs font-mono text-red-600 dark:text-red-400">→ {{ error }}</p>
+                {% endfor %}
+            </div>
+
+            <p class="font-mono text-[11px] text-zinc-500 dark:text-zinc-400">
+                Ссылку и код видят только вошедшие пользователи. Публикуя приглашение, вы пускаете в игру незнакомых людей.
+            </p>
+
+            <div class="flex justify-end">
+                <button type="submit"
+                        class="w-full sm:w-auto px-5 py-2.5 text-xs font-mono font-bold uppercase tracking-wider bg-signal-500 hover:bg-signal-400 text-carbon-950 border border-signal-500 transition-colors">
+                    ОПУБЛИКОВАТЬ →
+                </button>
+            </div>
+        </form>
+        {% else %}
+        <div class="p-4 sm:p-6 font-mono text-xs sm:text-sm text-zinc-600 dark:text-zinc-400">
+            <a href="{% url 'login' %}?next={{ request.get_full_path|urlencode }}"
+               class="font-bold text-signal-600 dark:text-signal-400 hover:underline">
+                Войдите
+            </a>, чтобы создать приглашение или увидеть ссылки.
+        </div>
+        {% endif %}
+    </section>
+
+    <!-- Активные приглашения (обновляются автоматически) -->
+    <section class="space-y-4">
+        <div class="flex items-center justify-between pb-2 border-b border-paper-300 dark:border-carbon-800">
+            <div class="flex items-center gap-2.5">
+                <span class="font-mono text-xs px-1.5 py-0.5 bg-signal-500/15 border border-signal-500/40 text-signal-600 dark:text-signal-400 font-bold">#01</span>
+                <h2 class="text-base sm:text-lg font-bold font-mono uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
+                    Активные приглашения
+                </h2>
+            </div>
+            <span class="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest text-signal-600 dark:text-signal-400">
+                <span class="w-1.5 h-1.5 bg-signal-500"></span>
+                LIVE
+            </span>
+        </div>
+
+        <div id="invites-list"
+             class="space-y-3"
+             data-updates-url="{% url 'invite_updates' game.pk %}"
+             data-version="{{ version }}">
+            {% include 'forum/_invite_list.html' %}
+        </div>
+    </section>
+
+</div>
+
+{% include 'forum/_invite_script.html' %}
+{% endblock %}
