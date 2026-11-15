@@ -59,7 +59,7 @@ from .steam_service import (
     fetch_schema_achievements,
     search_steam_games,
 )
-from .sync import sync_game
+from .sync import resync_game_steam, sync_game
 
 
 def index(request):
@@ -236,6 +236,9 @@ def game_detail(request, pk):
         user_unlocked_count = len(unlocked_pks)
         for ach in achievements:
             ach.is_unlocked = ach.pk in unlocked_pks
+        achievements.sort(
+            key=lambda a: (not getattr(a, 'is_unlocked', False), -getattr(a, 'global_percent', 0.0), a.pk)
+        )
 
     return render(request, 'catalog/game_detail.html', {
         'game': game,
@@ -345,3 +348,26 @@ def delete_review(request, game_pk, pk):
     return redirect(
         _reviews_url(game_pk, request.POST.get('sort'), request.POST.get('page'))
     )
+
+
+@login_required
+@require_POST
+def game_steam_resync(request, pk):
+    """Актуализирует отзывы и редкость достижений из Steam по запросу пользователя."""
+    game = get_object_or_404(Game, pk=pk)
+    if not game.steam_app_id:
+        messages.error(request, 'Эта игра не привязана к Steam.')
+        return redirect('game_detail', pk=game.pk)
+
+    try:
+        resync_game_steam(game)
+        messages.success(request, f'Данные и отзывы Steam для «{game.title}» успешно обновлены!')
+    except SteamAPIError as e:
+        logger.error('Failed to resync Steam data for %s: %s', game.steam_app_id, e)
+        messages.error(request, f'Не удалось обновить данные из Steam: {e}')
+    except Exception as e:
+        logger.exception('Unexpected error during Steam resync for %s', game.steam_app_id)
+        messages.error(request, f'Произошла непредвиденная ошибка: {e}')
+
+    return redirect('game_detail', pk=game.pk)
+

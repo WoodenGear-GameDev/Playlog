@@ -9,6 +9,7 @@ urlpatterns = [
     path('games/steam/<int:steam_app_id>/', views.steam_game_import, name='steam_game_import'),
     path('games/<int:pk>/rate/', views.rate_game, name='rate_game'),
     path('games/<int:pk>/rate/delete/', views.delete_rating, name='delete_rating'),
+    path('games/<int:pk>/steam-resync/', views.game_steam_resync, name='game_steam_resync'),
     path('games/<int:game_pk>/reviews/<int:pk>/vote/', views.vote_review, name='vote_review'),
     path('games/<int:game_pk>/reviews/<int:pk>/delete/', views.delete_review, name='delete_review'),
 ]

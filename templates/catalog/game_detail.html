@@ -51,12 +51,25 @@
                         </div>
                     </div>
 
-                    <div class="flex items-center justify-between gap-2">
+                    <div class="flex items-center justify-between gap-2 {% if game.steam_app_id %}pb-3 border-b border-paper-300 dark:border-carbon-800{% endif %}">
                         <span class="text-zinc-500 uppercase tracking-wider">ДАТА ВЫХОДА:</span>
                         <span class="font-bold text-zinc-900 dark:text-zinc-100">
                             {{ game.release_date|default:"не указана" }}
                         </span>
                     </div>
+
+                    {% if game.steam_app_id %}
+                    <!-- Кнопка перехода в магазин Steam -->
+                    <div class="pt-1">
+                        <a href="{{ game.steam_store_url }}"
+                           target="_blank"
+                           rel="noopener noreferrer"
+                           class="w-full py-1.5 px-3 text-center font-bold border border-paper-300 dark:border-carbon-800 hover:border-signal-500 bg-paper-100 dark:bg-carbon-900 text-zinc-800 dark:text-zinc-200 hover:text-signal-600 dark:hover:text-signal-400 transition-colors flex items-center justify-center gap-1.5">
+                            <span>СТРАНИЦА В МАГАЗИНЕ STEAM</span>
+                            <span>↗</span>
+                        </a>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
 
@@ -85,17 +98,93 @@
         </div>
     </section>
 
+    <!-- Достижения Steam -->
+    {% if achievements %}
+    <section id="achievements" class="border border-paper-300 dark:border-carbon-800 bg-paper-100 dark:bg-carbon-900">
+        <div class="px-6 py-4 border-b border-paper-300 dark:border-carbon-800 bg-paper-50 dark:bg-carbon-950/60 flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center gap-2.5">
+                <span class="font-mono text-xs px-1.5 py-0.5 bg-signal-500/15 border border-signal-500/40 text-signal-600 dark:text-signal-400 font-bold">
+                    #01
+                </span>
+                <h2 class="text-sm sm:text-base font-bold font-mono uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
+                    Достижения Steam
+                </h2>
+                <span class="font-mono text-xs text-zinc-500 dark:text-zinc-400">
+                    [{{ achievements|length }}]
+                </span>
+            </div>
+
+            {% if request.user.is_authenticated and request.user.profile.steam_id %}
+            <div class="flex items-center gap-2 font-mono text-xs">
+                <span class="text-zinc-500 uppercase tracking-wider">ПРОГРЕСС:</span>
+                <span class="px-2 py-0.5 bg-signal-500/15 border border-signal-500/40 text-signal-600 dark:text-signal-400 font-bold">
+                    {{ user_unlocked_count }} / {{ achievements|length }}
+                </span>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="p-6">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {% for item in achievements %}
+                <div class="flex items-start gap-3 p-3 border border-paper-300 dark:border-carbon-800 bg-paper-50 dark:bg-carbon-950/40 {% if item.is_unlocked %}border-signal-500/40{% endif %} {% if forloop.counter > 3 %}achievement-extra hidden{% endif %}">
+                    {% if item.is_unlocked %}
+                        <img src="{{ item.icon_url }}" alt="" class="w-12 h-12 flex-shrink-0 border border-signal-500/50" loading="lazy">
+                    {% else %}
+                        <img src="{{ item.icon_gray_url|default:item.icon_url }}" alt="" class="w-12 h-12 flex-shrink-0 border border-paper-300 dark:border-carbon-800 opacity-60 grayscale" loading="lazy">
+                    {% endif %}
+                    <div class="min-w-0 flex-1">
+                        <div class="flex items-center justify-between gap-2">
+                            <h4 class="font-bold text-xs text-zinc-900 dark:text-zinc-100 truncate {% if item.is_unlocked %}text-signal-600 dark:text-signal-400{% endif %}">
+                                {{ item.name }}
+                            </h4>
+                            {% if item.is_unlocked %}
+                                <span class="font-mono text-[9px] px-1 py-0.2 bg-signal-500/20 text-signal-600 dark:text-signal-400 font-bold border border-signal-500/30">ВЫБИТО</span>
+                            {% endif %}
+                        </div>
+                        <p class="text-[11px] text-zinc-600 dark:text-zinc-400 line-clamp-2 mt-1 leading-snug">
+                            {{ item.description|default:"Скрытое достижение" }}
+                        </p>
+                        <div class="flex items-center gap-1.5 mt-2 font-mono text-[10px]">
+                            {% if item.is_ultra_rare %}
+                                <span class="px-1.5 py-0.5 bg-amber-500/20 text-amber-600 dark:text-amber-400 font-bold border border-amber-500/40">★ {{ item.global_percent }}% (УЛЬТРАРЕДКОЕ)</span>
+                            {% elif item.is_rare %}
+                                <span class="px-1.5 py-0.5 bg-purple-500/20 text-purple-600 dark:text-purple-400 font-bold border border-purple-500/40">★ {{ item.global_percent }}% (РЕДКОЕ)</span>
+                            {% elif item.global_percent %}
+                                <span class="text-zinc-500 dark:text-zinc-400">У {{ item.global_percent }}% игроков</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            {% if achievements|length > 3 %}
+            <div class="mt-4 pt-4 border-t border-paper-300 dark:border-carbon-800 flex justify-end">
+                <button type="button"
+                        id="toggle-all-achievements-btn"
+                        onclick="toggleAchievements()"
+                        class="px-5 py-2 font-mono text-xs font-bold uppercase tracking-wider border border-paper-300 dark:border-carbon-800 hover:border-signal-500 bg-paper-50 dark:bg-carbon-950 text-zinc-700 dark:text-zinc-300 hover:text-signal-600 dark:hover:text-signal-400 transition-colors inline-flex items-center gap-2">
+                    <span id="toggle-achievements-text">ПОСМОТРЕТЬ ВСЕ ({{ achievements|length }})</span>
+                    <span id="toggle-achievements-icon">↓</span>
+                </button>
+            </div>
+            {% endif %}
+        </div>
+    </section>
+    {% endif %}
+
     <!-- Нижняя сетка: Оценки + Сообщество (Чат и Форум) -->
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
-        <!-- Модуль 1: Оценка игры -->
+        <!-- Модуль: Оценка игры -->
         <section class="lg:col-span-6 border border-paper-300 dark:border-carbon-800 bg-paper-100 dark:bg-carbon-900 flex flex-col justify-between">
             <div class="p-6 space-y-5">
                 <!-- Заголовок модуля -->
                 <div class="flex items-center justify-between border-b border-paper-300 dark:border-carbon-800 pb-3">
                     <div class="flex items-center gap-2.5">
                         <span class="font-mono text-xs px-1.5 py-0.5 bg-signal-500/15 border border-signal-500/40 text-signal-600 dark:text-signal-400 font-bold">
-                            #01
+                            {% if achievements %}#02{% else %}#01{% endif %}
                         </span>
                         <h2 class="text-sm sm:text-base font-bold font-mono uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
                             Оценка игроков
@@ -149,6 +238,48 @@
                         </p>
                     {% endif %}
                 </div>
+
+                {% if game.steam_app_id and game.steam_review_desc %}
+                <!-- Сводка отзывов Steam -->
+                <div class="p-4 border border-paper-300 dark:border-carbon-800 bg-paper-50 dark:bg-carbon-950 font-mono text-xs space-y-2.5">
+                    <div class="flex items-center justify-between gap-2">
+                        <div class="flex items-center gap-2">
+                            <span class="px-1.5 py-0.5 bg-signal-500/15 border border-signal-500/40 text-signal-600 dark:text-signal-400 font-bold text-[10px]">
+                                STEAM
+                            </span>
+                            <span class="text-zinc-500 uppercase tracking-wider text-[11px]">ОТЗЫВЫ:</span>
+                        </div>
+                        <span class="font-bold {% if game.steam_review_percent >= 80 %}text-emerald-600 dark:text-emerald-400{% elif game.steam_review_percent >= 40 %}text-amber-600 dark:text-amber-400{% else %}text-red-600 dark:text-red-400{% endif %}">
+                            {{ game.steam_review_desc }}{% if game.steam_review_percent %} ({{ game.steam_review_percent }}%){% endif %}
+                        </span>
+                    </div>
+
+                    <div class="flex items-center justify-between text-[11px] text-zinc-500 pt-1 border-t border-paper-300/60 dark:border-carbon-800/60">
+                        <span>
+                            {{ game.steam_review_total }} отзывов
+                            {% if game.steam_synced_at %}
+                                · {{ game.steam_synced_at|timesince }} назад
+                            {% endif %}
+                        </span>
+                        <div class="flex items-center gap-2.5">
+                            {% if request.user.is_authenticated %}
+                            <form method="post" action="{% url 'game_steam_resync' game.pk %}" class="inline">
+                                {% csrf_token %}
+                                <button type="submit" title="Обновить отзывы из Steam" class="text-zinc-500 hover:text-signal-600 dark:hover:text-signal-400 font-bold transition-colors">
+                                    🔄
+                                </button>
+                            </form>
+                            {% endif %}
+                            <a href="{{ game.steam_community_reviews_url }}"
+                               target="_blank"
+                               rel="noopener noreferrer"
+                               class="font-bold text-signal-600 dark:text-signal-400 hover:underline">
+                                Посмотреть в Стиме ↗
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
 
                 <!-- Форма оценки и отзыва для авторизованных -->
                 {% if user.is_authenticated %}
@@ -251,7 +382,7 @@
                 <div class="flex items-center justify-between border-b border-paper-300 dark:border-carbon-800 pb-3">
                     <div class="flex items-center gap-2.5">
                         <span class="font-mono text-xs px-1.5 py-0.5 bg-signal-500/15 border border-signal-500/40 text-signal-600 dark:text-signal-400 font-bold">
-                            #02
+                            {% if achievements %}#03{% else %}#02{% endif %}
                         </span>
                         <h2 class="text-sm sm:text-base font-bold font-mono uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
                             Сообщество игры
@@ -299,61 +430,6 @@
         </section>
 
     </div>
-
-    <!-- Достижения Steam -->
-    {% if achievements %}
-    <section id="achievements" class="border border-paper-300 dark:border-carbon-800 bg-paper-100 dark:bg-carbon-900">
-        <div class="px-6 py-4 border-b border-paper-300 dark:border-carbon-800 bg-paper-50 dark:bg-carbon-950/60 flex flex-wrap items-center justify-between gap-3">
-            <div class="flex items-center gap-2.5">
-                <span class="font-mono text-xs px-1.5 py-0.5 bg-signal-500/15 border border-signal-500/40 text-signal-600 dark:text-signal-400 font-bold">
-                    #03
-                </span>
-                <h2 class="text-sm sm:text-base font-bold font-mono uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
-                    Достижения Steam
-                </h2>
-                <span class="font-mono text-xs text-zinc-500 dark:text-zinc-400">
-                    [{{ achievements|length }}]
-                </span>
-            </div>
-
-            {% if request.user.is_authenticated and request.user.profile.steam_id %}
-            <div class="flex items-center gap-2 font-mono text-xs">
-                <span class="text-zinc-500 uppercase tracking-wider">ПРОГРЕСС:</span>
-                <span class="px-2 py-0.5 bg-signal-500/15 border border-signal-500/40 text-signal-600 dark:text-signal-400 font-bold">
-                    {{ user_unlocked_count }} / {{ achievements|length }}
-                </span>
-            </div>
-            {% endif %}
-        </div>
-
-        <div class="p-6">
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {% for item in achievements %}
-                <div class="flex items-start gap-3 p-3 border border-paper-300 dark:border-carbon-800 bg-paper-50 dark:bg-carbon-950/40 {% if item.is_unlocked %}border-signal-500/40{% endif %}">
-                    {% if item.is_unlocked %}
-                        <img src="{{ item.icon_url }}" alt="" class="w-12 h-12 flex-shrink-0 border border-signal-500/50" loading="lazy">
-                    {% else %}
-                        <img src="{{ item.icon_gray_url|default:item.icon_url }}" alt="" class="w-12 h-12 flex-shrink-0 border border-paper-300 dark:border-carbon-800 opacity-60 grayscale" loading="lazy">
-                    {% endif %}
-                    <div class="min-w-0 flex-1">
-                        <div class="flex items-center justify-between gap-2">
-                            <h4 class="font-bold text-xs text-zinc-900 dark:text-zinc-100 truncate {% if item.is_unlocked %}text-signal-600 dark:text-signal-400{% endif %}">
-                                {{ item.name }}
-                            </h4>
-                            {% if item.is_unlocked %}
-                                <span class="font-mono text-[9px] px-1 py-0.2 bg-signal-500/20 text-signal-600 dark:text-signal-400 font-bold border border-signal-500/30">ВЫБИТО</span>
-                            {% endif %}
-                        </div>
-                        <p class="text-[11px] text-zinc-600 dark:text-zinc-400 line-clamp-2 mt-1 leading-snug">
-                            {{ item.description|default:"Скрытое достижение" }}
-                        </p>
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
-        </div>
-    </section>
-    {% endif %}
 
     <!-- Отзывы игроков -->
     <section id="reviews" class="border border-paper-300 dark:border-carbon-800 bg-paper-100 dark:bg-carbon-900">
@@ -599,5 +675,31 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 });
+
+function toggleAchievements() {
+    const extras = document.querySelectorAll('.achievement-extra');
+    const text = document.getElementById('toggle-achievements-text');
+    const icon = document.getElementById('toggle-achievements-icon');
+    if (!extras.length) return;
+
+    const isHidden = extras[0].classList.contains('hidden');
+    extras.forEach(el => {
+        if (isHidden) {
+            el.classList.remove('hidden');
+        } else {
+            el.classList.add('hidden');
+        }
+    });
+
+    if (isHidden) {
+        if (text) text.textContent = 'СВЕРНУТЬ ДОСТИЖЕНИЯ';
+        if (icon) icon.textContent = '↑';
+    } else {
+        if (text) text.textContent = 'ПОСМОТРЕТЬ ВСЕ (' + (extras.length + 3) + ')';
+        if (icon) icon.textContent = '↓';
+        const section = document.getElementById('achievements');
+        if (section) section.scrollIntoView({ behavior: 'smooth' });
+    }
+}
 </script>
 {% endblock %}

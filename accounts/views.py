@@ -205,8 +205,6 @@ def steam_unlink(request):
     profile, _ = Profile.objects.get_or_create(user=request.user)
     profile.steam_id = ''
     profile.save(update_fields=['steam_id'])
-    profile.steam_id = ''
-    profile.save(update_fields=['steam_id'])
     profile.library.all().delete()
     messages.success(request, 'Steam-аккаунт отвязан.')
     return redirect('profile')
