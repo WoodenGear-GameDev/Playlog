@@ -12,12 +12,14 @@ from django.urls import reverse
 from django.views.decorators.http import require_POST
 from django.core.paginator import Paginator
 from django.shortcuts import get_object_or_404
+from django.http import HttpResponseForbidden, Http404
 
 import secrets
 import time
 from urllib.parse import urlencode
 
 from .steam_openid import build_login_url, verify_assertion
+from .steam_service import sync_profile_library
 
 from .confirmation import (
     activation_token,
@@ -25,7 +27,7 @@ from .confirmation import (
     send_confirmation_email,
 )
 from .forms import AvatarForm, RegisterForm, ResendConfirmationForm, UsernameForm, DeleteAccountForm
-from catalog.models import Game, Rating
+from catalog.models import Achievement, Game, Rating
 from forum.models import GameInvite, Post, Topic
 from .models import LibraryGame, Profile
 from .deletion import DeletionError, check_can_delete, content_summary, delete_user_account
@@ -174,7 +176,33 @@ def steam_link_callback(request):
     if old_steam_id and old_steam_id != steam_id:
         profile.library.all().delete()
 
-    messages.success(request, 'Steam-аккаунт подтверждён и привязан.')
+    success, count, error_msg = sync_profile_library(profile)
+    if success:
+        messages.success(
+            request, f'Steam-аккаунт привязан! Загружено игр: {count}.'
+        )
+    else:
+        messages.success(request, 'Steam-аккаунт подтверждён и привязан.')
+        if error_msg:
+            messages.warning(request, error_msg)
+    return redirect('profile')
+
+
+@login_required
+@require_POST
+def steam_sync_library(request):
+    profile, _ = Profile.objects.get_or_create(user=request.user)
+    if not profile.steam_id:
+        messages.error(request, 'Сначала привяжите Steam-аккаунт.')
+        return redirect('profile')
+
+    success, count, error_msg = sync_profile_library(profile)
+    if success:
+        messages.success(
+            request, f'Библиотека успешно синхронизирована! Всего игр: {count}.'
+        )
+    else:
+        messages.error(request, error_msg or 'Не удалось синхронизировать библиотеку со Steam.')
     return redirect('profile')
 
 
@@ -182,8 +210,6 @@ def steam_link_callback(request):
 @require_POST
 def steam_unlink(request):
     profile, _ = Profile.objects.get_or_create(user=request.user)
-    profile.steam_id = ''
-    profile.save(update_fields=['steam_id'])
     profile.steam_id = ''
     profile.save(update_fields=['steam_id'])
     profile.library.all().delete()
@@ -198,12 +224,9 @@ def library_open(request, pk):
     if game:
         return redirect('game_detail', pk=game.pk)
 
-    messages.info(
-        request, f'Игры «{entry.display_name}» пока нет в каталоге сайта.'
-    )
-    page_number = request.GET.get('page', '')
-    suffix = f'?page={page_number}' if page_number.isdigit() else ''
-    return redirect(f"{reverse('profile')}{suffix}#library")
+    url = reverse('steam_game_import', kwargs={'steam_app_id': entry.steam_app_id})
+    params = urlencode({'title': entry.display_name, 'img': entry.header_image})
+    return redirect(f"{url}?{params}")
 
 class PasswordChange(SuccessMessageMixin, auth_views.PasswordChangeView):
     template_name = 'accounts/password_change.html'
@@ -371,4 +394,85 @@ def public_profile(request, pk):
         'steam_public': steam_public,
         'library_page': library_page,
         'library_entries': library_entries,
+    })
+
+
+def user_game_achievements(request, user_pk, steam_app_id):
+    owner = get_object_or_404(get_user_model(), pk=user_pk, is_active=True)
+    owner_profile = Profile.objects.filter(user=owner).first()
+    if not owner_profile:
+        raise Http404('Профиль не найден.')
+
+    is_own = request.user.is_authenticated and request.user.pk == owner.pk
+    if not is_own and not (owner_profile.steam_id and owner_profile.show_steam):
+        return HttpResponseForbidden('Пользователь скрыл библиотеку и достижения.')
+
+    library_entry = LibraryGame.objects.filter(
+        profile=owner_profile, steam_app_id=steam_app_id
+    ).first()
+
+    game = Game.objects.filter(steam_app_id=steam_app_id).first()
+    if not game:
+        from catalog.sync import sync_game
+        try:
+            sync_game(steam_app_id)
+            game = Game.objects.filter(steam_app_id=steam_app_id).first()
+        except Exception:
+            pass
+
+    if game and not game.achievements.exists():
+        from catalog.sync import sync_game
+        try:
+            sync_game(steam_app_id)
+        except Exception:
+            pass
+
+    if game and owner_profile.steam_id:
+        unlocked_count = owner_profile.unlocked_achievements.filter(game=game).count()
+        if unlocked_count == 0 and library_entry and library_entry.achievements_unlocked > 0:
+            from catalog.steam_service import fetch_player_unlocked_achievements
+            try:
+                unlocked_set, _, _ = fetch_player_unlocked_achievements(
+                    owner_profile.steam_id, steam_app_id
+                )
+                if unlocked_set:
+                    user_achs = Achievement.objects.filter(
+                        game=game, api_name__in=unlocked_set
+                    )
+                    if user_achs.exists():
+                        owner_profile.unlocked_achievements.add(*user_achs)
+            except Exception:
+                pass
+
+    achievements = []
+    unlocked_pks = set()
+    if game:
+        achievements = list(game.achievements.all())
+        unlocked_pks = set(
+            owner_profile.unlocked_achievements.filter(game=game).values_list('pk', flat=True)
+        )
+
+    for ach in achievements:
+        ach.is_unlocked = ach.pk in unlocked_pks
+
+    achievements.sort(key=lambda a: (not a.is_unlocked, a.global_percent))
+
+    unlocked_total = len(unlocked_pks) if unlocked_pks else (library_entry.achievements_unlocked if library_entry else 0)
+    ach_total = len(achievements) if achievements else (library_entry.achievements_total if library_entry else 0)
+    locked_total = max(0, ach_total - unlocked_total)
+    rare_total = sum(1 for a in achievements if a.is_rare or a.is_ultra_rare)
+    percent = round((unlocked_total / ach_total) * 100) if ach_total else 0
+
+    return render(request, 'accounts/_user_achievements_modal.html', {
+        'owner': owner,
+        'owner_profile': owner_profile,
+        'game': game,
+        'library_entry': library_entry,
+        'achievements': achievements,
+        'unlocked_total': unlocked_total,
+        'locked_total': locked_total,
+        'rare_total': rare_total,
+        'ach_total': ach_total,
+        'percent': percent,
+        'is_user_progress': True,
     })

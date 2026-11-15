@@ -1,4 +1,7 @@
+import logging
 from urllib.parse import urlencode
+
+logger = logging.getLogger(__name__)
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -11,8 +14,8 @@ from django.urls import reverse
 from django.views.decorators.http import require_POST
 
 from .forms import RatingForm
-from .models import Category, Game, Rating, ReviewVote
-from .sync import describe_result, sync_game
+from .models import Achievement, Category, Game, Rating, ReviewVote
+from .sync import describe_result, resync_game_steam, sync_game
 
 RESULTS_PER_PAGE = 24
 
@@ -50,6 +53,16 @@ def _search_games(query):
     return [pk for _, pk in found]
 
 
+from .steam_service import (
+    SteamAPIError,
+    fetch_app_details,
+    fetch_player_unlocked_achievements,
+    fetch_schema_achievements,
+    search_steam_games,
+)
+from .sync import resync_game_steam, sync_game
+
+
 def index(request):
     q = request.GET.get('q', '').strip()[:100]
     if q:
@@ -57,6 +70,7 @@ def index(request):
         page = paginator.get_page(request.GET.get('page'))
         games = Game.objects.in_bulk(list(page.object_list))
         results = [games[pk] for pk in page.object_list if pk in games]
+
         return render(request, 'catalog/index.html', {
             'q': q,
             'page': page,
@@ -68,6 +82,73 @@ def index(request):
     return render(request, 'catalog/index.html', {
         'categories': categories,
         'uncategorized': uncategorized,
+    })
+
+
+def steam_search_results(request):
+    """Асинхронно ищет игры в Steam по запросу и отдаёт карточки для вставки."""
+    q = request.GET.get('q', '').strip()[:100]
+    if not q:
+        return render(request, 'catalog/partials/steam_search_results.html', {'steam_results': []})
+
+    from django.core.cache import cache
+
+    cache_key = f'steam_search_{q.casefold()}'
+    steam_items = cache.get(cache_key)
+    if steam_items is None:
+        steam_items = search_steam_games(q)
+        cache.set(cache_key, steam_items, 3600)  # кэш поиска на 1 час
+
+    existing_map = dict(
+        Game.objects.filter(
+            steam_app_id__in=[it['steam_app_id'] for it in steam_items]
+        ).values_list('steam_app_id', 'pk')
+    )
+    steam_results = []
+    for it in steam_items:
+        appid = it['steam_app_id']
+        existing_pk = existing_map.get(appid)
+        steam_results.append({
+            'steam_app_id': appid,
+            'title': it['title'],
+            'header_image': it['header_image'],
+            'in_catalog': bool(existing_pk),
+            'game_pk': existing_pk,
+        })
+
+    return render(request, 'catalog/partials/steam_search_results.html', {
+        'steam_results': steam_results,
+    })
+    return render(request, 'catalog/index.html', {
+        'categories': categories,
+        'uncategorized': uncategorized,
+    })
+
+
+def steam_game_import(request, steam_app_id):
+    """Импортирует игру из Steam в каталог с подтверждением."""
+    game = Game.objects.filter(steam_app_id=steam_app_id).first()
+    if game:
+        return redirect('game_detail', pk=game.pk)
+
+    if request.method == 'POST':
+        try:
+            game = Game(steam_app_id=steam_app_id)
+            sync_game(game, overwrite=True)
+            messages.success(
+                request,
+                f'Игра «{game.title}» успешно добавлена в каталог! Загружено достижений: {game.achievements.count()}.',
+            )
+            return redirect('game_detail', pk=game.pk)
+        except SteamAPIError as e:
+            logger.error('Failed to import Steam game %s: %s', steam_app_id, e)
+            messages.error(request, f'Не удалось добавить игру из Steam: {e}')
+            return redirect('home')
+
+    return render(request, 'catalog/game_add_confirm.html', {
+        'steam_app_id': steam_app_id,
+        'title': request.GET.get('title', ''),
+        'header_image': request.GET.get('img', ''),
     })
 
 
@@ -113,6 +194,53 @@ def game_detail(request, pk):
             request.user.is_authenticated and review.user_id == request.user.pk
         )
 
+    achievements = list(game.achievements.all())
+    # Если игра привязана к Steam, но ачивки в БД отсутствуют — подтягиваем схему
+    if not achievements and game.steam_app_id:
+        schema = fetch_schema_achievements(game.steam_app_id)
+        if schema:
+            to_create = [
+                Achievement(
+                    game=game,
+                    api_name=a['api_name'],
+                    name=a['name'],
+                    description=a['description'],
+                    icon_url=a['icon_url'],
+                    icon_gray_url=a['icon_gray_url'],
+                )
+                for a in schema
+            ]
+            Achievement.objects.bulk_create(to_create, ignore_conflicts=True)
+            achievements = list(game.achievements.all())
+
+    user_unlocked_count = 0
+    if request.user.is_authenticated and hasattr(request.user, 'profile'):
+        profile = request.user.profile
+        unlocked_pks = set(
+            profile.unlocked_achievements.filter(game=game).values_list('pk', flat=True)
+        )
+        # Если игра есть в библиотеке пользователя с выбитыми ачивками, но они ещё не связаны в БД — связываем
+        if not unlocked_pks and profile.steam_id and achievements:
+            lib_entry = profile.library.filter(steam_app_id=game.steam_app_id).first()
+            if lib_entry and lib_entry.achievements_unlocked > 0:
+                try:
+                    unlocked_set, _, _ = fetch_player_unlocked_achievements(
+                        profile.steam_id, game.steam_app_id
+                    )
+                    if unlocked_set:
+                        matched = list(game.achievements.filter(api_name__in=unlocked_set))
+                        profile.unlocked_achievements.add(*matched)
+                        unlocked_pks = {a.pk for a in matched}
+                except SteamAPIError as e:
+                    logger.error('Failed to link achievements for %s on %s: %s', profile.user.username, game.title, e)
+
+        user_unlocked_count = len(unlocked_pks)
+        for ach in achievements:
+            ach.is_unlocked = ach.pk in unlocked_pks
+        achievements.sort(
+            key=lambda a: (not getattr(a, 'is_unlocked', False), -getattr(a, 'global_percent', 0.0), a.pk)
+        )
+
     return render(request, 'catalog/game_detail.html', {
         'game': game,
         'stats': stats,
@@ -122,6 +250,84 @@ def game_detail(request, pk):
         'reviews_page': reviews_page,
         'sort': sort,
         'sort_options': REVIEW_SORT_LABELS,
+        'achievements': achievements,
+        'user_unlocked_count': user_unlocked_count,
+    })
+
+
+def game_achievements_modal(request, pk):
+    game = get_object_or_404(Game, pk=pk)
+    achievements = list(game.achievements.all())
+
+    # Если игра привязана к Steam, но ачивки в БД отсутствуют — подтягиваем схему
+    if not achievements and game.steam_app_id:
+        schema = fetch_schema_achievements(game.steam_app_id)
+        if schema:
+            to_create = [
+                Achievement(
+                    game=game,
+                    api_name=a['api_name'],
+                    name=a['name'],
+                    description=a['description'],
+                    icon_url=a['icon_url'],
+                    icon_gray_url=a['icon_gray_url'],
+                )
+                for a in schema
+            ]
+            Achievement.objects.bulk_create(to_create, ignore_conflicts=True)
+            achievements = list(game.achievements.all())
+
+    user_unlocked_count = 0
+    is_user_progress = False
+    owner = None
+
+    if request.user.is_authenticated and hasattr(request.user, 'profile'):
+        profile = request.user.profile
+        owner = request.user
+        unlocked_pks = set(
+            profile.unlocked_achievements.filter(game=game).values_list('pk', flat=True)
+        )
+        if not unlocked_pks and profile.steam_id and achievements:
+            lib_entry = profile.library.filter(steam_app_id=game.steam_app_id).first()
+            if lib_entry and lib_entry.achievements_unlocked > 0:
+                try:
+                    unlocked_set, _, _ = fetch_player_unlocked_achievements(
+                        profile.steam_id, game.steam_app_id
+                    )
+                    if unlocked_set:
+                        matched = list(game.achievements.filter(api_name__in=unlocked_set))
+                        profile.unlocked_achievements.add(*matched)
+                        unlocked_pks = {a.pk for a in matched}
+                except SteamAPIError as e:
+                    logger.error('Failed to link achievements for %s on %s: %s', profile.user.username, game.title, e)
+
+        if profile.steam_id:
+            is_user_progress = True
+            user_unlocked_count = len(unlocked_pks)
+            for ach in achievements:
+                ach.is_unlocked = ach.pk in unlocked_pks
+            achievements.sort(
+                key=lambda a: (not getattr(a, 'is_unlocked', False), -getattr(a, 'global_percent', 0.0), a.pk)
+            )
+
+    if not is_user_progress:
+        achievements.sort(key=lambda a: (-getattr(a, 'global_percent', 0.0), a.pk))
+
+    ach_total = len(achievements)
+    locked_total = max(0, ach_total - user_unlocked_count)
+    rare_total = sum(1 for a in achievements if a.is_rare or a.is_ultra_rare)
+    percent = round((user_unlocked_count / ach_total) * 100) if ach_total else 0
+
+    return render(request, 'accounts/_user_achievements_modal.html', {
+        'game': game,
+        'owner': owner,
+        'achievements': achievements,
+        'unlocked_total': user_unlocked_count,
+        'locked_total': locked_total,
+        'rare_total': rare_total,
+        'ach_total': ach_total,
+        'percent': percent,
+        'is_user_progress': is_user_progress,
     })
 
 
@@ -222,13 +428,40 @@ def delete_review(request, game_pk, pk):
 
 @login_required
 @require_POST
+def game_steam_resync(request, pk):
+    """Актуализирует отзывы и редкость достижений из Steam по запросу пользователя."""
+    game = get_object_or_404(Game, pk=pk)
+    if not game.steam_app_id:
+        messages.error(request, 'Эта игра не привязана к Steam.')
+        return redirect('game_detail', pk=game.pk)
+
+    try:
+        resync_game_steam(game)
+        messages.success(request, f'Данные и отзывы Steam для «{game.title}» успешно обновлены!')
+    except SteamAPIError as e:
+        logger.error('Failed to resync Steam data for %s: %s', game.steam_app_id, e)
+        messages.error(request, f'Не удалось обновить данные из Steam: {e}')
+    except Exception as e:
+        logger.exception('Unexpected error during Steam resync for %s', game.steam_app_id)
+        messages.error(request, f'Произошла непредвиденная ошибка: {e}')
+
+    return redirect('game_detail', pk=game.pk)
+
+
+@login_required
+@require_POST
 def refresh_game(request, pk):
+    """Обновление игры из Steam для администраторов/модераторов."""
     if not request.user.is_staff:
         raise PermissionDenied
     game = get_object_or_404(Game, pk=pk)
-    result = sync_game(game, overwrite=True)
-    if result:
+    try:
+        result = sync_game(game, overwrite=True)
         messages.success(request, describe_result(result))
-    else:
-        messages.error(request, describe_result(result))
+    except SteamAPIError as e:
+        logger.error('Failed to refresh game %s: %s', game.steam_app_id, e)
+        messages.error(request, f'Не удалось обновить игру: {e}')
+    except Exception as e:
+        logger.exception('Unexpected error refreshing game %s', game.steam_app_id)
+        messages.error(request, f'Произошла непредвиденная ошибка: {e}')
     return redirect('game_detail', pk=game.pk)

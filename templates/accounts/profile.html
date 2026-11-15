@@ -71,15 +71,12 @@
                         </h2>
                     </div>
                     <span class="font-mono text-[11px] {% if profile.steam_id %}text-signal-600 dark:text-signal-400 font-bold{% else %}text-zinc-500{% endif %}">
-                        {% if profile.steam_id %}[ПОДТВЕРЖДЁН]{% else %}[НЕ ПРИВЯЗАН]{% endif %}
+                        {% if profile.steam_id %}[ПРИВЯЗАН]{% else %}[НЕ ПРИВЯЗАН]{% endif %}
                     </span>
                 </div>
 
                 {% if profile.steam_id %}
                     <div class="space-y-2 font-mono text-xs sm:text-sm">
-                        <p class="text-zinc-600 dark:text-zinc-400">
-                            Привязан аккаунт (подтверждён через Steam):
-                        </p>
                         <div class="p-3 border border-paper-300 dark:border-carbon-800 bg-paper-50 dark:bg-carbon-950 flex items-center justify-between gap-2">
                             <span class="text-zinc-500 text-xs">STEAM_ID:</span>
                             <a href="https://steamcommunity.com/profiles/{{ profile.steam_id }}"
@@ -104,14 +101,6 @@
 
             <div class="px-6 py-4 border-t border-paper-300 dark:border-carbon-800 bg-paper-50 dark:bg-carbon-950/60 flex flex-wrap items-center justify-end gap-3">
                 {% if profile.steam_id %}
-                    <form method="post" action="{% url 'library_refresh' %}">
-                        {% csrf_token %}
-                        <button type="submit"
-                                {% if library_cooldown %}disabled{% endif %}
-                                class="px-4 py-2 text-xs font-mono font-bold uppercase tracking-wider border border-signal-500 bg-signal-500/10 hover:bg-signal-500 text-signal-600 dark:text-signal-400 hover:text-carbon-950 dark:hover:text-carbon-950 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                            {% if library_cooldown %}ПОДОЖДИТЕ {{ library_cooldown }} С{% else %}ОБНОВИТЬ БИБЛИОТЕКУ{% endif %}
-                        </button>
-                    </form>
                     <form method="post" action="{% url 'steam_unlink' %}">
                         {% csrf_token %}
                         <button type="submit"
@@ -209,6 +198,15 @@
                 </span>
                 {% endif %}
             </div>
+            {% if profile.steam_id %}
+            <form method="post" action="{% url 'steam_sync' %}">
+                {% csrf_token %}
+                <button type="submit"
+                        class="px-3 py-1 text-xs font-mono font-bold uppercase tracking-wider border border-signal-500 bg-signal-500/10 hover:bg-signal-500 text-signal-600 dark:text-signal-400 hover:text-carbon-950 dark:hover:text-carbon-950 transition-colors">
+                    СИНХРОНИЗИРОВАТЬ ⟳
+                </button>
+            </form>
+            {% endif %}
         </div>
 
         {% if page.paginator.count %}
@@ -246,11 +244,24 @@
                             {{ entry.display_name }}
                         </h3>
 
-                        <div class="pt-2.5 border-t border-paper-300 dark:border-carbon-800 flex items-center justify-between font-mono text-xs">
-                            <span class="px-2 py-0.5 bg-signal-500/10 border border-signal-500/30 text-signal-600 dark:text-signal-400 font-bold">
-                                {{ entry.playtime_hours }} Ч
-                            </span>
-                            <span class="text-zinc-500 dark:text-zinc-400 group-hover:text-signal-600 dark:group-hover:text-signal-400 font-bold transition-colors">
+                        <div class="pt-2.5 border-t border-paper-300 dark:border-carbon-800 flex items-center justify-between font-mono text-xs gap-2">
+                            <div class="flex items-center gap-1.5 flex-wrap">
+                                <span class="px-2 py-0.5 bg-signal-500/10 border border-signal-500/30 text-signal-600 dark:text-signal-400 font-bold">
+                                    {{ entry.playtime_hours }} Ч
+                                </span>
+                                {% if entry.achievements_total > 0 %}
+                                    {% if entry.achievements_unlocked == entry.achievements_total %}
+                                        <span class="px-1.5 py-0.5 bg-amber-500/15 border border-amber-500/40 text-amber-600 dark:text-amber-400 font-bold text-[10px]" title="Все достижения получены!">
+                                            ★ 100%
+                                        </span>
+                                    {% else %}
+                                        <span class="px-1.5 py-0.5 bg-paper-200 dark:bg-carbon-800 border border-paper-300 dark:border-carbon-700 text-zinc-600 dark:text-zinc-400 text-[10px]" title="Достижения: {{ entry.achievements_unlocked }} из {{ entry.achievements_total }} ({{ entry.achievements_progress_percent }}%)">
+                                            🏆 {{ entry.achievements_unlocked }}/{{ entry.achievements_total }}
+                                        </span>
+                                    {% endif %}
+                                {% endif %}
+                            </div>
+                            <span class="text-zinc-500 dark:text-zinc-400 group-hover:text-signal-600 dark:group-hover:text-signal-400 font-bold transition-colors whitespace-nowrap">
                                 ОТКРЫТЬ →
                             </span>
                         </div>

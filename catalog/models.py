@@ -29,6 +29,9 @@ class Game(models.Model):
         blank=True,
         verbose_name='Категории',
     )
+    steam_review_desc = models.CharField('Оценка отзывов Steam', max_length=100, blank=True)
+    steam_review_percent = models.PositiveSmallIntegerField('Положительных отзывов (%)', null=True, blank=True)
+    steam_review_total = models.PositiveIntegerField('Всего отзывов Steam', default=0)
     steam_synced_at = models.DateTimeField(
         'Обновлено из Steam', null=True, blank=True, editable=False
     )
@@ -40,6 +43,14 @@ class Game(models.Model):
 
     def __str__(self):
         return self.title or f'Steam app {self.steam_app_id}'
+
+    @property
+    def steam_store_url(self):
+        return f'https://store.steampowered.com/app/{self.steam_app_id}/' if self.steam_app_id else ''
+
+    @property
+    def steam_community_reviews_url(self):
+        return f'https://steamcommunity.com/app/{self.steam_app_id}/reviews/' if self.steam_app_id else ''
 
 
 RATING_CHOICES = [(i, str(i)) for i in range(1, 11)]
@@ -107,3 +118,46 @@ class ReviewVote(models.Model):
 
     def __str__(self):
         return f'{self.user} → {self.rating_id}: {"полезно" if self.is_helpful else "бесполезно"}'
+
+
+class Achievement(models.Model):
+    game = models.ForeignKey(
+        Game,
+        on_delete=models.CASCADE,
+        related_name='achievements',
+        verbose_name='Игра',
+    )
+    api_name = models.CharField('Код Steam', max_length=120)
+    name = models.CharField('Название', max_length=200)
+    description = models.TextField('Описание', blank=True)
+    icon_url = models.URLField('Цветная иконка', max_length=500, blank=True)
+    icon_gray_url = models.URLField('Серая иконка', max_length=500, blank=True)
+    global_percent = models.FloatField('Процент получения в мире', default=0.0)
+    unlocked_by = models.ManyToManyField(
+        'accounts.Profile',
+        related_name='unlocked_achievements',
+        blank=True,
+        verbose_name='Выбившие игроки',
+    )
+
+    class Meta:
+        verbose_name = 'Достижение'
+        verbose_name_plural = 'Достижения'
+        ordering = ['pk']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['game', 'api_name'],
+                name='unique_game_achievement',
+            ),
+        ]
+
+    def __str__(self):
+        return f'{self.game.title} — {self.name}'
+
+    @property
+    def is_rare(self):
+        return 0.0 < self.global_percent <= 10.0
+
+    @property
+    def is_ultra_rare(self):
+        return 0.0 < self.global_percent <= 3.0

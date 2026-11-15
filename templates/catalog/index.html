@@ -69,10 +69,13 @@
 
         {% else %}
         <div class="border border-paper-300 dark:border-carbon-800 bg-paper-100 dark:bg-carbon-900 p-8 text-center font-mono space-y-3">
-            <p class="text-sm text-zinc-600 dark:text-zinc-400">По запросу «{{ q }}» ничего не найдено.</p>
+            <p class="text-sm text-zinc-600 dark:text-zinc-400">В каталоге Playlog по запросу «{{ q }}» ничего не найдено.</p>
             <a href="{% url 'home' %}" class="inline-block text-xs font-bold text-signal-600 dark:text-signal-400 hover:underline">СБРОСИТЬ ПОИСК</a>
         </div>
         {% endif %}
+
+        <!-- Результаты из Steam (подгружаются асинхронно в фоне) -->
+        <div id="steam-search-container" data-url="{% url 'steam_search_results' %}?q={{ q|urlencode }}"></div>
     </section>
 
     {% else %}
@@ -173,10 +176,23 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
+    // 1. Асинхронная подгрузка результатов поиска Steam
+    const steamContainer = document.getElementById('steam-search-container');
+    if (steamContainer && steamContainer.dataset.url) {
+        fetch(steamContainer.dataset.url)
+            .then((res) => (res.ok ? res.text() : ''))
+            .then((html) => {
+                if (html && html.trim()) {
+                    steamContainer.innerHTML = html;
+                }
+            })
+            .catch(() => {});
+    }
+
+    // 2. Горизонтальный скролл и drag-to-scroll ленты игр
     document.querySelectorAll('.game-strip').forEach((strip) => {
         let snapRestoreTimer = null;
 
-        // 1. Горизонтальный скролл колёсиком мыши
         strip.addEventListener('wheel', (e) => {
             if (strip.scrollWidth <= strip.clientWidth) return;
             if (Math.abs(e.deltaY) > Math.abs(e.deltaX) && e.deltaY !== 0) {
@@ -191,7 +207,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }, { passive: false });
 
-        // 2. Перетаскивание ленты мышкой (drag-to-scroll)
         let isDown = false;
         let startX = 0;
         let scrollStart = 0;
@@ -227,7 +242,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        // Блокируем случайный переход по карточке после перетаскивания
         strip.addEventListener('click', (e) => {
             if (dragged) {
                 e.preventDefault();
