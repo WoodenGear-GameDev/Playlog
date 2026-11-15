@@ -139,7 +139,12 @@ class LibraryGame(models.Model):
 
     @property
     def display_cover(self):
-        return self.header_image
+        cat_game = getattr(self, 'catalog_game', None)
+        if cat_game and getattr(cat_game, 'header_image', None):
+            return cat_game.header_image
+        if self.header_image:
+            return self.header_image
+        return f'https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/{self.steam_app_id}/header.jpg'
 
     @property
     def playtime_hours(self):

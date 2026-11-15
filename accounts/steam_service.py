@@ -122,7 +122,8 @@ def sync_steam_account_library(library: SteamLibrary, force: bool = False):
         name = item['name']
         playtime = item['playtime_minutes']
         cat_game = catalog_map.get(app_id)
-        header_img = cat_game.header_image if cat_game and cat_game.header_image else ''
+        steam_cover = f'https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/{app_id}/header.jpg'
+        header_img = cat_game.header_image if (cat_game and cat_game.header_image) else steam_cover
 
         if app_id in existing_games:
             lib_game = existing_games[app_id]

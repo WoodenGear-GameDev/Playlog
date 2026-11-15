@@ -25,13 +25,14 @@ class SteamIdentityAndLibraryTests(TestCase):
         self.assertTrue(sa.show_steam)
         self.assertIsNotNone(sa.created_at)
 
-        # Create library
+        # Create library in success state
         lib = SteamLibrary.objects.create(
             steam_account=sa,
-            status=SteamLibrary.Status.NOT_SYNCED,
+            status=SteamLibrary.Status.SUCCESS,
+            total_games=1,
         )
-        self.assertEqual(lib.status, 'not_synced')
-        self.assertEqual(lib.total_games, 0)
+        self.assertEqual(lib.status, 'success')
+        self.assertEqual(lib.total_games, 1)
         self.assertEqual(lib.error_message, '')
 
         # Add library game
@@ -51,7 +52,7 @@ class SteamIdentityAndLibraryTests(TestCase):
         res = self.client.get(reverse('profile'))
         self.assertEqual(res.status_code, 200)
         self.assertContains(res, '76561198000000001')
-        self.assertContains(res, '[НЕ СИНХРОНИЗИРОВАНО]')
+        self.assertContains(res, 'Stardew Valley')
 
     def test_steam_unlink(self):
         sa = SteamAccount.objects.create(

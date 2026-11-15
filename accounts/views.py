@@ -91,6 +91,12 @@ def profile(request):
     profile, _ = Profile.objects.get_or_create(user=request.user)
     steam_account = getattr(request.user, 'steam_account', None)
     library = getattr(steam_account, 'library', None) if steam_account else None
+    
+    # Автоматическая синхронизация при первом открытии профиля после привязки Steam
+    if library and library.status == SteamLibrary.Status.NOT_SYNCED:
+        sync_steam_account_library(library)
+        library.refresh_from_db()
+
     library_games = []
     page = None
     remaining_cooldown = 0

@@ -207,26 +207,36 @@
         {% elif library.status == 'not_synced' %}
             <div class="flex items-center justify-between pb-2 border-b border-paper-300 dark:border-carbon-800">
                 <div class="flex items-center gap-2.5">
-                    <span class="font-mono text-xs px-1.5 py-0.5 bg-amber-500/15 border border-amber-500/40 text-amber-600 dark:text-amber-400 font-bold">
-                        [НЕ СИНХРОНИЗИРОВАНО]
+                    <span class="inline-flex items-center gap-1.5 font-mono text-xs px-2 py-0.5 bg-signal-500/15 border border-signal-500/40 text-signal-600 dark:text-signal-400 font-bold animate-pulse">
+                        <span class="w-2 h-2 rounded-full bg-signal-500 animate-ping"></span>
+                        [СИНХРОНИЗАЦИЯ...]
                     </span>
                     <h2 class="text-base sm:text-lg font-bold font-mono uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
                         Библиотека Steam
                     </h2>
                 </div>
             </div>
-            <div class="border border-paper-300 dark:border-carbon-800 bg-paper-100 dark:bg-carbon-900 p-8 text-center font-mono space-y-4">
-                <p class="text-xs sm:text-sm text-zinc-700 dark:text-zinc-300">
-                    Ваша библиотека еще не загружена. Нажмите кнопку ниже, чтобы запросить список ваших игр из Steam.
+            <div class="border border-paper-300 dark:border-carbon-800 bg-paper-100 dark:bg-carbon-900 p-12 text-center font-mono space-y-3">
+                <div class="inline-block animate-spin text-signal-500 text-2xl font-bold">⟳</div>
+                <p class="text-xs sm:text-sm text-zinc-900 dark:text-zinc-100 font-bold">
+                    Запрашиваем данные у Steam...
                 </p>
-                <form method="post" action="{% url 'steam_sync' %}">
+                <p class="text-[11px] text-zinc-500 dark:text-zinc-400">
+                    Это займет всего пару секунд. Пожалуйста, подождите.
+                </p>
+                <form id="initial-steam-sync-form" method="post" action="{% url 'steam_sync' %}" class="pt-2">
                     {% csrf_token %}
                     <button type="submit"
-                            class="px-5 py-2.5 text-xs font-mono font-bold uppercase tracking-wider bg-signal-500 hover:bg-signal-400 text-carbon-950 border border-signal-500 transition-colors shadow-sm">
-                        СИНХРОНИЗИРОВАТЬ БИБЛИОТЕКУ ⟳
+                            class="px-5 py-2 text-xs font-mono font-bold uppercase tracking-wider bg-signal-500 hover:bg-signal-400 text-carbon-950 border border-signal-500 transition-colors shadow-sm">
+                        СИНХРОНИЗИРОВАТЬ СЕЙЧАС ⟳
                     </button>
                 </form>
             </div>
+            <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                document.getElementById('initial-steam-sync-form')?.submit();
+            });
+            </script>
         {% elif library.status == 'syncing' %}
             <div class="flex items-center justify-between pb-2 border-b border-paper-300 dark:border-carbon-800">
                 <div class="flex items-center gap-2.5">
