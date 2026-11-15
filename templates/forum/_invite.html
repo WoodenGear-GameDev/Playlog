@@ -14,7 +14,7 @@
                 </div>
             {% endif %}
 
-            <strong class="text-zinc-900 dark:text-zinc-100">@{{ invite.author.username }}</strong>
+            <strong class="text-zinc-900 dark:text-zinc-100">{% include 'accounts/_user_link.html' with uid=invite.author_id name=invite.author.username %}</strong>
             {% if invite.author_id == user.pk %}
                 <span class="px-1.5 py-0.5 text-[10px] font-bold bg-signal-500/20 border border-signal-500/50 text-signal-700 dark:text-signal-400">ВЫ</span>
             {% endif %}

@@ -14,7 +14,7 @@
                 </div>
             {% endif %}
 
-            <strong class="text-zinc-900 dark:text-zinc-100">{% if post.author_id %}@{% endif %}{{ post.author_name }}</strong>
+            <strong class="text-zinc-900 dark:text-zinc-100">{% include 'accounts/_user_link.html' with uid=post.author_id name=post.author_name %}</strong>
             {% if not post.is_deleted and user.is_authenticated and post.author_id == user.pk %}
                 <span class="px-1.5 py-0.5 text-[10px] font-bold bg-signal-500/20 border border-signal-500/50 text-signal-700 dark:text-signal-400">
                     ВЫ

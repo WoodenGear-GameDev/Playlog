@@ -51,7 +51,7 @@
                 {% endif %}
 
                 <span>
-                    Автор: <strong class="text-signal-600 dark:text-signal-400">{% if topic.author_id %}@{% endif %}{{ topic.author_name }}</strong>
+                    Автор: <strong class="text-signal-600 dark:text-signal-400">{% include 'accounts/_user_link.html' with uid=topic.author_id name=topic.author_name %}</strong>
                 </span>
 
                 {% if not topic.is_deleted and user.is_authenticated and topic.author_id == user.pk %}
