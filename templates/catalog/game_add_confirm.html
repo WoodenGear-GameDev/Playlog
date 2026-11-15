@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+
+{% block title %}Добавить игру в каталог // PLAYLOG{% endblock %}
+
+{% block content %}
+<div class="max-w-lg mx-auto my-6 sm:my-12">
+    <div class="border border-signal-500/60 bg-paper-100 dark:bg-carbon-900 shadow-lg">
+
+        <!-- Шапка диалога -->
+        <div class="px-6 py-4 border-b border-paper-300 dark:border-carbon-800 bg-signal-500/10 flex items-center justify-between">
+            <div>
+                <p class="font-mono text-[10px] uppercase tracking-widest text-signal-600 dark:text-signal-400">
+                    [CATALOG // IMPORT_FROM_STEAM]
+                </p>
+                <h1 class="text-xl font-bold font-mono uppercase tracking-tight text-zinc-950 dark:text-white mt-0.5">
+                    Добавить игру в каталог?
+                </h1>
+            </div>
+            <span class="px-2 py-0.5 font-mono text-[10px] font-bold bg-signal-500 text-carbon-950">
+                STEAM
+            </span>
+        </div>
+
+        <div class="p-6 space-y-5">
+            <!-- Превью -->
+            <div class="border border-paper-300 dark:border-carbon-800 bg-paper-50 dark:bg-carbon-950 overflow-hidden flex flex-col sm:flex-row gap-4 items-center p-3">
+                <div class="w-full sm:w-40 aspect-[231/87] flex-shrink-0 bg-paper-200 dark:bg-carbon-900 border border-paper-300 dark:border-carbon-800 overflow-hidden">
+                    {% if header_image %}
+                        <img src="{{ header_image }}" alt="{{ title }}" class="w-full h-full object-cover">
+                    {% else %}
+                        <div class="w-full h-full flex items-center justify-center font-mono text-xs text-zinc-400">НЕТ ОБЛОЖКИ</div>
+                    {% endif %}
+                </div>
+                <div class="space-y-1 min-w-0 flex-grow font-mono">
+                    <h2 class="text-base font-bold text-zinc-950 dark:text-white truncate">
+                        {{ title|default:"Игра Steam" }}
+                    </h2>
+                    <p class="text-xs text-zinc-500 dark:text-zinc-400">
+                        Steam AppID: <span class="font-bold text-zinc-700 dark:text-zinc-300">{{ steam_app_id }}</span>
+                    </p>
+                </div>
+            </div>
+
+            <p class="font-mono text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
+                Этой игры ещё нет в каталоге Playlog. При подтверждении данные об игре (описание, жанры, дата выхода и обложка) будут загружены из Steam, и откроется её страница.
+            </p>
+
+            <!-- Кнопки -->
+            <form method="post" class="flex flex-col-reverse sm:flex-row items-center justify-end gap-3 pt-2">
+                {% csrf_token %}
+                <a href="{{ request.META.HTTP_REFERER|default:'/' }}"
+                   class="w-full sm:w-auto text-center px-4 py-2 text-xs font-mono font-semibold uppercase tracking-wider border border-paper-300 dark:border-carbon-800 hover:border-zinc-500 bg-paper-50 dark:bg-carbon-950 text-zinc-700 dark:text-zinc-300 transition-colors">
+                    ОТМЕНА
+                </a>
+                <button type="submit"
+                        class="w-full sm:w-auto px-5 py-2 text-xs font-mono font-bold uppercase tracking-wider bg-signal-500 hover:bg-signal-400 text-carbon-950 border border-signal-500 transition-colors">
+                    ДОБАВИТЬ В КАТАЛОГ →
+                </button>
+            </form>
+        </div>
+
+    </div>
+</div>
+{% endblock %}

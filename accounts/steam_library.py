@@ -1,3 +1,7 @@
+from catalog.steam_service import SteamAPIError, SteamPrivacyError
+from .steam_service import fetch_user_library
+
+
 class SteamLibraryError(Exception):
     """Общая ошибка загрузки библиотеки."""
 
@@ -11,20 +15,17 @@ class SteamUnavailable(SteamLibraryError):
 
 
 def fetch_owned_games(steam_id):
-    """
-    Заглушка. Реальный запрос к Steam реализует отдельный участник.
+    """Запрашивает список игр пользователя из Steam Web API.
 
     Вход: подтверждённый SteamID64 (строка из 17 цифр).
-
-    Должна вернуть список словарей:
+    Возвращает список словарей:
     [{'steam_app_id': 620, 'name': 'Portal 2', 'playtime_minutes': 1234}, ...]
-    Пустой список означает, что Steam ответил и игр нет.
-
-    Ошибки:
-    - ProfilePrivate: список игр скрыт настройками приватности;
-    - SteamUnavailable: любая другая проблема со Steam.
-    Текст исключения показывается пользователю на сайте: пишите по-русски,
-    коротко и без технических деталей. Запрос нужно делать с таймаутом
-    (до 10 секунд): пока он идёт, страница пользователя ждёт.
     """
-    raise SteamUnavailable('Загрузка библиотеки из Steam ещё не подключена.')
+    try:
+        return fetch_user_library(steam_id)
+    except SteamPrivacyError as exc:
+        raise ProfilePrivate(str(exc))
+    except SteamAPIError as exc:
+        raise SteamUnavailable(str(exc))
+    except Exception as exc:
+        raise SteamUnavailable('Не удалось связаться со Steam. Попробуйте позже.')
