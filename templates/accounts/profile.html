@@ -66,15 +66,12 @@
                         </h2>
                     </div>
                     <span class="font-mono text-[11px] {% if profile.steam_id %}text-signal-600 dark:text-signal-400 font-bold{% else %}text-zinc-500{% endif %}">
-                        {% if profile.steam_id %}[ПОДТВЕРЖДЁН]{% else %}[НЕ ПРИВЯЗАН]{% endif %}
+                        {% if profile.steam_id %}[ПРИВЯЗАН]{% else %}[НЕ ПРИВЯЗАН]{% endif %}
                     </span>
                 </div>
 
                 {% if profile.steam_id %}
                     <div class="space-y-2 font-mono text-xs sm:text-sm">
-                        <p class="text-zinc-600 dark:text-zinc-400">
-                            Привязан аккаунт (подтверждён через Steam):
-                        </p>
                         <div class="p-3 border border-paper-300 dark:border-carbon-800 bg-paper-50 dark:bg-carbon-950 flex items-center justify-between gap-2">
                             <span class="text-zinc-500 text-xs">STEAM_ID:</span>
                             <a href="https://steamcommunity.com/profiles/{{ profile.steam_id }}"
@@ -94,22 +91,13 @@
 
             <div class="px-6 py-4 border-t border-paper-300 dark:border-carbon-800 bg-paper-50 dark:bg-carbon-950/60 flex items-center justify-end">
                 {% if profile.steam_id %}
-                    <div class="flex items-center gap-3">
-                        <form method="post" action="{% url 'steam_sync' %}">
-                            {% csrf_token %}
-                            <button type="submit"
-                                    class="px-4 py-2 text-xs font-mono font-bold uppercase tracking-wider bg-signal-500 hover:bg-signal-400 text-carbon-950 border border-signal-500 transition-colors">
-                                ОБНОВИТЬ ИГРЫ ⟳
-                            </button>
-                        </form>
-                        <form method="post" action="{% url 'steam_unlink' %}">
-                            {% csrf_token %}
-                            <button type="submit"
-                                    class="px-4 py-2 text-xs font-mono font-bold uppercase tracking-wider border border-paper-300 dark:border-carbon-800 hover:border-red-500 dark:hover:border-red-500 bg-paper-100 dark:bg-carbon-900 text-zinc-700 dark:text-zinc-300 hover:text-red-600 dark:hover:text-red-400 transition-colors">
-                                ОТВЯЗАТЬ STEAM
-                            </button>
-                        </form>
-                    </div>
+                    <form method="post" action="{% url 'steam_unlink' %}">
+                        {% csrf_token %}
+                        <button type="submit"
+                                class="px-4 py-2 text-xs font-mono font-bold uppercase tracking-wider border border-paper-300 dark:border-carbon-800 hover:border-red-500 dark:hover:border-red-500 bg-paper-100 dark:bg-carbon-900 text-zinc-700 dark:text-zinc-300 hover:text-red-600 dark:hover:text-red-400 transition-colors">
+                            ОТВЯЗАТЬ STEAM
+                        </button>
+                    </form>
                 {% else %}
                     <form method="post" action="{% url 'steam_link' %}">
                         {% csrf_token %}
