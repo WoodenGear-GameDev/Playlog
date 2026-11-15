@@ -19,6 +19,11 @@
                 <span class="w-1.5 h-1.5 bg-signal-500"></span>
                 <span>ОБЩИЙ ЧАТ ИГРЫ</span>
             </a>
+
+            <a href="{% url 'invite_list' game.pk %}"
+               class="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-mono font-bold uppercase tracking-wider border border-paper-300 dark:border-carbon-800 hover:border-signal-500 dark:hover:border-signal-500 bg-paper-100 dark:bg-carbon-900 text-zinc-700 dark:text-zinc-300 hover:text-signal-600 dark:hover:text-signal-400 transition-colors">
+                <span>ПРИГЛАШЕНИЯ</span>
+            </a>
         </div>
 
         <span class="font-mono text-[11px] uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
@@ -86,7 +91,7 @@
                     </div>
 
                     <div class="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-xs text-zinc-500 dark:text-zinc-400">
-                        <span>Автор: <strong class="text-zinc-800 dark:text-zinc-200">{% if topic.author_id %}@{% endif %}{{ topic.author_name }}</strong></span>
+                        <span>Автор: <strong class="text-zinc-800 dark:text-zinc-200">{% include 'accounts/_user_link.html' with uid=topic.author_id name=topic.author_name %}</strong></span>
                         <span class="text-zinc-300 dark:text-zinc-700">|</span>
                         <span>создана {{ topic.created_at|date:"d.m.Y H:i" }}</span>
                     </div>

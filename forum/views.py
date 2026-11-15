@@ -14,15 +14,18 @@ from django.views.decorators.http import require_GET, require_POST
 from django.db import transaction
 
 from types import SimpleNamespace
+from datetime import timedelta
 
 from catalog.models import Game
 
-from .forms import PostForm, TopicForm
-from .models import Post, Topic
+from .forms import InviteForm, PostForm, TopicForm
+from .models import GameInvite, Post, Topic
 
 POSTS_PER_PAGE = 20
 CHAT_PER_PAGE = 30
 UPDATES_BATCH = 50
+MAX_ACTIVE_INVITES = 3
+INVITE_KEEP_AFTER_END = timedelta(hours=1)
 
 DEFAULT_TOPIC_SORT = 'new'
 TOPIC_SORTS = {
@@ -284,3 +287,88 @@ def game_chat_updates(request, game_pk):
 def topic_updates(request, pk):
     topic = get_object_or_404(Topic, pk=pk)
     return _updates_response(request, topic.posts.all())
+
+def _active_invites(game):
+    return game.invites.active().select_related('author__profile')
+
+
+def _purge_old_invites():
+    border = timezone.now() - INVITE_KEEP_AFTER_END
+    GameInvite.objects.filter(Q(expires_at__lt=border) | Q(closed_at__lt=border)).delete()
+
+
+def invite_list(request, game_pk):
+    game = get_object_or_404(Game, pk=game_pk)
+
+    if request.method == 'POST':
+        if not request.user.is_authenticated:
+            return redirect_to_login(request.get_full_path())
+        form = InviteForm(request.POST)
+        if form.is_valid():
+            data = form.cleaned_data
+            has_steam = bool(getattr(getattr(request.user, 'profile', None), 'steam_id', ''))
+            active_count = GameInvite.objects.active().filter(author=request.user).count()
+            if active_count >= MAX_ACTIVE_INVITES:
+                form.add_error(
+                    None,
+                    f'Одновременно можно держать не более {MAX_ACTIVE_INVITES} приглашений. '
+                    'Завершите одно из прежних.',
+                )
+            elif not (data['link'] or data['join_code'] or has_steam):
+                form.add_error(
+                    None,
+                    'Укажите ссылку, код лобби или адрес сервера. Если у игры нет ни ссылки, '
+                    'ни кода, привяжите Steam в профиле: тогда в приглашении появится ссылка '
+                    'на ваш профиль, и вас смогут добавить в друзья.',
+                )
+            else:
+                _purge_old_invites()
+                invite = form.save(commit=False)
+                invite.game = game
+                invite.author = request.user
+                invite.expires_at = timezone.now() + timedelta(hours=data['hours'])
+                invite.save()
+                messages.success(request, 'Приглашение опубликовано.')
+                return redirect('invite_list', game_pk=game.pk)
+    else:
+        form = InviteForm()
+
+    invites = list(_active_invites(game))
+    my_active = 0
+    if request.user.is_authenticated:
+        my_active = GameInvite.objects.active().filter(author=request.user).count()
+    return render(request, 'forum/invite_list.html', {
+        'game': game,
+        'form': form,
+        'invites': invites,
+        'version': ','.join(str(invite.pk) for invite in invites),
+        'my_active': my_active,
+        'max_active': MAX_ACTIVE_INVITES,
+    })
+
+
+@login_required
+@require_POST
+def invite_close(request, game_pk, pk):
+    invite = get_object_or_404(GameInvite, pk=pk, game_id=game_pk)
+    if invite.author_id != request.user.pk and not request.user.is_staff:
+        raise PermissionDenied
+    if invite.is_active:
+        invite.closed_at = timezone.now()
+        invite.save(update_fields=['closed_at'])
+        messages.success(request, 'Приглашение завершено.')
+    return redirect('invite_list', game_pk=game_pk)
+
+
+@require_GET
+@never_cache
+def invite_updates(request, game_pk):
+    game = get_object_or_404(Game, pk=game_pk)
+    invites = list(_active_invites(game))
+    version = ','.join(str(invite.pk) for invite in invites)
+    if request.GET.get('v') == version:
+        return JsonResponse({'changed': False})
+    html = render_to_string(
+        'forum/_invite_list.html', {'invites': invites, 'game': game}, request=request
+    )
+    return JsonResponse({'changed': True, 'html': html, 'version': version})

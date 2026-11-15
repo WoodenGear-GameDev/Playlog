@@ -13,4 +13,7 @@ urlpatterns = [
     path('topic/<int:pk>/delete/', views.topic_delete, name='topic_delete'),
     path('game/<int:game_pk>/chat/updates/', views.game_chat_updates, name='game_chat_updates'),
     path('topic/<int:pk>/updates/', views.topic_updates, name='topic_updates'),
+    path('game/<int:game_pk>/invites/', views.invite_list, name='invite_list'),
+    path('game/<int:game_pk>/invites/updates/', views.invite_updates, name='invite_updates'),
+    path('game/<int:game_pk>/invites/<int:pk>/close/', views.invite_close, name='invite_close'),
 ]

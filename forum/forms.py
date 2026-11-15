@@ -2,7 +2,9 @@ from django import forms
 from django.db.models import Max
 
 from .images import ImageRejected, compress_post_image
-from .models import Post, PostImage, Topic
+from .models import GameInvite, Post, PostImage, Topic
+
+import re
 
 MAX_IMAGES = 5
 MAX_UPLOAD_SIZE = 8 * 1024 * 1024
@@ -138,3 +140,66 @@ class PostForm(forms.ModelForm):
         for file in self.cleaned_data.get('images') or []:
             PostImage.objects.create(post=post, image=file, position=position)
             position += 1
+
+URL_CHARS = r'[A-Za-z0-9._~:/?#@!$&()*+,;=%\-]+'
+LINK_PATTERNS = [
+    re.compile(r'steam://joinlobby/\d+/\d+/\d+'),
+    re.compile(r'steam://connect/[A-Za-z0-9.\-]+(?::\d{1,5})?(?:/[A-Za-z0-9_\-]{1,64})?'),
+    re.compile(r'https://s\.team/' + URL_CHARS),
+    re.compile(r'https://steamcommunity\.com/' + URL_CHARS),
+    re.compile(r'https://(?:www\.)?discord\.gg/[A-Za-z0-9\-]+'),
+    re.compile(r'https://(?:www\.)?discord\.com/invite/[A-Za-z0-9\-]+'),
+]
+
+INVITE_HOURS = [
+    (1, '1 час'), (2, '2 часа'), (3, '3 часа'), (4, '4 часа'),
+    (5, '5 часов'), (6, '6 часов'), (7, '7 часов'), (8, '8 часов'),
+]
+
+
+class InviteForm(forms.ModelForm):
+    description = forms.CharField(
+        label='Описание',
+        max_length=300,
+        widget=forms.Textarea(attrs={
+            'rows': 3,
+            'placeholder': 'Например: ищу двоих на кооператив, начинаем в 20:00',
+        }),
+    )
+    link = forms.CharField(
+        label='Ссылка (необязательно)',
+        required=False,
+        max_length=300,
+        widget=forms.TextInput(attrs={'placeholder': 'steam://joinlobby/...'}),
+    )
+    join_code = forms.CharField(
+        label='Код лобби или адрес сервера (необязательно)',
+        required=False,
+        max_length=100,
+    )
+    hours = forms.TypedChoiceField(
+        label='Срок действия',
+        choices=INVITE_HOURS,
+        coerce=int,
+        initial=2,
+    )
+
+    class Meta:
+        model = GameInvite
+        fields = ('description', 'link', 'join_code')
+
+    def clean_link(self):
+        link = self.cleaned_data['link'].strip()
+        if link and not any(pattern.fullmatch(link) for pattern in LINK_PATTERNS):
+            raise forms.ValidationError(
+                'Такая ссылка не поддерживается. Допустимы steam://joinlobby/…, '
+                'steam://connect/…, https://s.team/…, https://steamcommunity.com/… '
+                'и приглашения Discord. Если ссылки нет, укажите код ниже.'
+            )
+        return link
+
+    def clean_join_code(self):
+        code = self.cleaned_data['join_code'].strip()
+        if re.search(r'[\x00-\x1f\x7f<>]', code):
+            raise forms.ValidationError('Код не должен содержать переносов строк и символов < >.')
+        return code

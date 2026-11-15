@@ -1,0 +1,1 @@
+{% if uid %}<a href="{% url 'user_profile' uid %}" class="hover:text-signal-600 dark:hover:text-signal-400 hover:underline transition-colors" title="Открыть профиль">@{{ name }}</a>{% else %}{{ name }}{% endif %}

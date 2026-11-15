@@ -52,6 +52,11 @@
                     <span>РЕДАКТИРОВАТЬ ПРОФИЛЬ</span>
                     <span>→</span>
                 </a>
+                <a href="{% url 'user_profile' user.pk %}"
+                   class="inline-flex items-center gap-2 px-4 py-2 text-xs font-mono font-bold uppercase tracking-wider border border-paper-300 dark:border-carbon-800 hover:border-signal-500 bg-paper-100 dark:bg-carbon-900 text-zinc-700 dark:text-zinc-300 hover:text-signal-600 dark:hover:text-signal-400 transition-colors">
+                    <span>КАК МЕНЯ ВИДЯТ ДРУГИЕ</span>
+                    <span>→</span>
+                </a>
             </div>
         </section>
 
@@ -124,6 +129,21 @@
                     </form>
                 {% endif %}
             </div>
+            <form method="post" action="{% url 'profile_privacy' %}"
+                    class="flex flex-wrap items-center justify-between gap-2 p-3 border border-paper-300 dark:border-carbon-800 bg-paper-50 dark:bg-carbon-950 font-mono text-xs">
+                {% csrf_token %}
+                <input type="hidden" name="show_steam" value="{% if profile.show_steam %}0{% else %}1{% endif %}">
+                <span class="text-zinc-600 dark:text-zinc-400">
+                    Steam и библиотека на публичной странице:
+                    <strong class="{% if profile.show_steam %}text-signal-600 dark:text-signal-400{% else %}text-zinc-500{% endif %}">
+                        {% if profile.show_steam %}ВИДНЫ ВСЕМ{% else %}СКРЫТЫ{% endif %}
+                    </strong>
+                </span>
+                <button type="submit"
+                        class="px-3 py-1.5 font-bold uppercase border border-paper-300 dark:border-carbon-800 hover:border-signal-500 text-zinc-700 dark:text-zinc-300 hover:text-signal-600 dark:hover:text-signal-400 transition-colors">
+                    {% if profile.show_steam %}СКРЫТЬ{% else %}ПОКАЗАТЬ{% endif %}
+                </button>
+            </form>
         </section>
 
     </div>
